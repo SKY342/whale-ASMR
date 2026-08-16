@@ -1,0 +1,8 @@
+node_modules/
+.npm-cache/
+.expo/
+dist/
+web-build/
+*.log
+.DS_Store
+*.tsbuildinfo
