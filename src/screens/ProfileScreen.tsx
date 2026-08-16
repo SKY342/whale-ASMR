@@ -19,10 +19,13 @@ import {
   deleteFollow,
   getFavorites,
   getFollows,
+  updateFollowInfo,
 } from '../db/schema';
 import { routeBilibiliUrl } from '../services/router/UrlRouter';
-import { getVideoInfo } from '../utils/bilibili-api';
+import { getUpInfo, getVideoInfo } from '../utils/bilibili-api';
 import { buildUpHomeUrl, parseUpMid } from '../utils/bili-router';
+import CoverImage from '../components/CoverImage';
+import { playerQueueStore, toQueueItem } from '../store/playerQueueStore';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 
 export default function ProfileScreen() {
@@ -31,15 +34,39 @@ export default function ProfileScreen() {
   const stackNavigation =
     tabNavigation.getParent<StackNavigationProp<RootStackParamList>>();
 
-  const [follows, setFollows] = useState<{ id: number; uid: string; name: string | null; homeUrl: string | null }[]>([]);
+  const [follows, setFollows] = useState<
+    { id: number; uid: string; name: string | null; avatarUrl: string | null; homeUrl: string | null }[]
+  >([]);
   const [favorites, setFavorites] = useState<{ id: number; mediaId: string; title: string | null; url: string | null }[]>([]);
   const [followUrl, setFollowUrl] = useState('');
   const [favoriteUrl, setFavoriteUrl] = useState('');
 
   const refresh = () => {
-    void Promise.all([getFollows(), getFavorites()]).then(([f, fav]) => {
+    void Promise.all([getFollows(), getFavorites()]).then(async ([f, fav]) => {
       setFollows(f);
       setFavorites(fav);
+      // 补齐旧数据的昵称/头像（旧版本只存了 UID）
+      for (const follow of f) {
+        if (!follow.name || follow.name.startsWith('UP主 ') || !follow.avatarUrl) {
+          try {
+            const info = await getUpInfo(follow.uid);
+            await updateFollowInfo(follow.id, {
+              name: info.name,
+              avatarUrl: info.face,
+              homeUrl: buildUpHomeUrl(follow.uid),
+            });
+            setFollows((prev) =>
+              prev.map((item) =>
+                item.id === follow.id
+                  ? { ...item, name: info.name, avatarUrl: info.face, homeUrl: buildUpHomeUrl(follow.uid) }
+                  : item,
+              ),
+            );
+          } catch {
+            // 拉取失败保持原样
+          }
+        }
+      }
     });
   };
 
@@ -54,9 +81,19 @@ export default function ProfileScreen() {
       // 支持 space.bilibili.com/<mid> 或视频链接
       const midFromUrl = parseUpMid(url);
       if (midFromUrl) {
+        let name = `UP主 ${midFromUrl}`;
+        let avatarUrl = '';
+        try {
+          const upInfo = await getUpInfo(midFromUrl);
+          name = upInfo.name;
+          avatarUrl = upInfo.face;
+        } catch {
+          // 拉取失败时先存编号
+        }
         await addFollow({
           uid: midFromUrl,
-          name: `UP主 ${midFromUrl}`,
+          name,
+          avatarUrl,
           homeUrl: buildUpHomeUrl(midFromUrl),
         });
       } else {
@@ -92,11 +129,42 @@ export default function ProfileScreen() {
   const openFavorite = async (url: string | null) => {
     if (!url) return;
     try {
+      const queueItems = await Promise.all(
+        favorites.map(async (fav) => {
+          if (!fav.url) return null;
+          try {
+            const routed = await routeBilibiliUrl(fav.url);
+            if (!routed) return null;
+            return toQueueItem({
+              id: routed.id,
+              type: routed.type,
+              title: fav.title ?? fav.url,
+            });
+          } catch {
+            return null;
+          }
+        }),
+      );
+      const validQueue = queueItems.filter(
+        (i): i is NonNullable<typeof i> => i !== null,
+      );
+      if (validQueue.length === 0) {
+        Alert.alert('暂不支持该链接', '目前仅支持视频、直播和 b23.tv 短链');
+        return;
+      }
+
       const routed = await routeBilibiliUrl(url);
       if (!routed) {
         Alert.alert('暂不支持该链接', '目前仅支持视频、直播和 b23.tv 短链');
         return;
       }
+      const index = validQueue.findIndex(
+        (i) => i.id === routed.id && i.type === routed.type,
+      );
+      playerQueueStore
+        .getState()
+        .setQueue(validQueue, Math.max(index, 0), 'favorites');
+
       stackNavigation?.navigate('Player', {
         id: routed.id,
         type: routed.type,
@@ -166,8 +234,13 @@ export default function ProfileScreen() {
             onPress={() => openFollow(item)}
             onLongPress={() => confirmDeleteFollow(item)}
           >
-            <Text style={styles.cardTitle}>UP主: {item.name ?? item.uid}</Text>
-            <Text style={styles.cardMeta}>点击查看TA的作品 · 长按取消关注</Text>
+            <View style={styles.followRow}>
+              <CoverImage uri={item.avatarUrl} size={40} />
+              <View style={styles.followInfo}>
+                <Text style={styles.cardTitle}>UP主: {item.name ?? item.uid}</Text>
+                <Text style={styles.cardMeta}>点击查看TA的作品 · 长按取消关注</Text>
+              </View>
+            </View>
           </Pressable>
         ))}
 
@@ -226,7 +299,7 @@ export default function ProfileScreen() {
         </Pressable>
         <Pressable style={styles.card}>
           <Text style={styles.cardTitle}>关于</Text>
-          <Text style={styles.cardMeta}>B站ASMR/白噪声助眠音频播放器 v0.1.0</Text>
+          <Text style={styles.cardMeta}>鲸鱼助眠 v0.4.0</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -283,6 +356,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 12,
     marginBottom: 8,
+  },
+  followRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  followInfo: {
+    flex: 1,
   },
   cardTitle: {
     color: '#e6edf3',

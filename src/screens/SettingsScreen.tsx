@@ -117,7 +117,7 @@ export default function SettingsScreen() {
 
         <Text style={styles.sectionTitle}>关于</Text>
         <Text style={styles.about}>
-          B站ASMR/白噪声助眠音频播放器 v0.1.0{'\n'}
+          鲸鱼助眠 v0.4.0{'\n'}
           纯音频 · 无互动 · 专注助眠{'\n'}
           技术方案 v2.0 · 仅手机端
         </Text>

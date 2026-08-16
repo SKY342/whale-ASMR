@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "B站ASMR助眠播放器",
+    "name": "鲸鱼助眠",
     "slug": "bili-asmr-player",
-    "version": "0.1.0",
+    "version": "0.4.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",

@@ -174,6 +174,33 @@ export async function searchLiveRooms(
     }));
 }
 
+// ---------- UP主信息 ----------
+
+export interface UpInfo {
+  mid: number;
+  name: string;
+  face: string;
+}
+
+export async function getUpInfo(mid: number | string): Promise<UpInfo> {
+  await ensureBuvid3();
+  const res = await axios.get('https://api.bilibili.com/x/web-interface/card', {
+    params: { mid },
+    headers: headers(`https://space.bilibili.com/${mid}`),
+    timeout: 10000,
+  });
+
+  const card = res.data?.data?.card;
+  if (res.data?.code !== 0 || !card) {
+    throw new Error(`获取UP主信息失败: ${res.data?.message ?? mid}`);
+  }
+  return {
+    mid: Number(card.mid ?? mid),
+    name: String(card.name ?? ''),
+    face: normalizeUrl(String(card.face ?? '')),
+  };
+}
+
 // ---------- 视频信息 ----------
 
 export async function getVideoInfo(bvid: string): Promise<VideoInfo> {

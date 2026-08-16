@@ -21,6 +21,7 @@ import {
   renamePlaylist,
 } from '../db/schema';
 import type { Playlist } from '../db/schema';
+import { playerQueueStore, toQueueItem } from '../store/playerQueueStore';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 
 export default function PlaylistScreen() {
@@ -31,7 +32,9 @@ export default function PlaylistScreen() {
 
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [items, setItems] = useState<{ id: number; bvid: string; title: string | null }[]>([]);
+  const [items, setItems] = useState<
+    { id: number; bvid: string; title: string | null; coverUrl: string | null; duration: number | null }[]
+  >([]);
   const [newName, setNewName] = useState('');
   const [renaming, setRenaming] = useState<Playlist | null>(null);
   const [renameText, setRenameText] = useState('');
@@ -98,6 +101,22 @@ export default function PlaylistScreen() {
   };
 
   const playItem = (bvid: string, title: string | null) => {
+    const index = items.findIndex((i) => i.bvid === bvid);
+    playerQueueStore
+      .getState()
+      .setQueue(
+        items.map((i) =>
+          toQueueItem({
+            id: i.bvid,
+            type: 'video',
+            title: i.title ?? i.bvid,
+            artwork: i.coverUrl ?? '',
+            duration: i.duration ?? undefined,
+          }),
+        ),
+        Math.max(index, 0),
+        'playlist',
+      );
     stackNavigation?.navigate('Player', {
       id: bvid,
       type: 'video',

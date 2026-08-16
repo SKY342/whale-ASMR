@@ -17,10 +17,28 @@ import { getHomeRecommendations, searchVideos } from '../utils/bilibili-api';
 import { filterByKeywords } from '../services/filter/KeywordFilter';
 import { getBlockedKeywords, getPlayHistory } from '../db/schema';
 import { settingsStore } from '../store/settingsStore';
+import { playerQueueStore, toQueueItem } from '../store/playerQueueStore';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import type { SearchResult } from '../services/sources';
 
-const CATEGORIES = ['全部', '助眠', '白噪声', '自然音', 'ASMR'];
+const CATEGORIES = [
+  '全部',
+  '助眠',
+  '白噪声',
+  '自然音',
+  'ASMR',
+  '触发音',
+  '轻语',
+  '采耳',
+  '敲击音',
+  '无人声',
+  '纯音乐',
+];
+
+const ZONES = [
+  { title: '助眠专区', keyword: '助眠' },
+  { title: '白噪声专区', keyword: '白噪声' },
+];
 
 export default function HomeScreen() {
   const tabNavigation =
@@ -30,7 +48,6 @@ export default function HomeScreen() {
 
   const [items, setItems] = useState<SearchResult[]>([]);
   const [category, setCategory] = useState('全部');
-  const [keyword, setKeyword] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
@@ -53,6 +70,7 @@ export default function HomeScreen() {
   const refresh = useCallback(async () => {
     setRefreshing(true);
     setError(null);
+    setItems([]); // 下拉刷新：先清空旧列表，确保替换而非追加
     try {
       const keywordForLoad = category === '全部' ? null : category;
       const list = keywordForLoad
@@ -98,11 +116,15 @@ export default function HomeScreen() {
   const goSearch = () => {
     stackNavigation?.navigate('SearchResults', {
       type: 'video',
-      keyword: keyword.trim() || undefined,
     });
   };
 
   const openPlayer = (item: SearchResult) => {
+    const list = filtered;
+    const index = list.findIndex((i) => i.id === item.id);
+    playerQueueStore
+      .getState()
+      .setQueue(list.map(toQueueItem), Math.max(index, 0), 'home');
     stackNavigation?.navigate('Player', {
       id: item.id,
       type: item.type,
@@ -120,10 +142,10 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View style={styles.searchRow}>
           <SearchBar
-            value={keyword}
+            value=""
             placeholder="搜索视频/助眠/白噪声..."
-            onChangeText={setKeyword}
-            onSubmit={goSearch}
+            onChangeText={() => {}}
+            onPress={goSearch}
           />
           <Pressable style={styles.searchButton} onPress={goSearch}>
             <Text style={styles.searchButtonText}>搜索</Text>
@@ -159,6 +181,23 @@ export default function HomeScreen() {
                 </Pressable>
               )}
             />
+            <View style={styles.zoneRow}>
+              {ZONES.map((zone) => (
+                <Pressable
+                  key={zone.title}
+                  style={styles.zoneCard}
+                  onPress={() =>
+                    stackNavigation?.navigate('SearchResults', {
+                      type: 'video',
+                      keyword: zone.keyword,
+                    })
+                  }
+                >
+                  <Text style={styles.zoneTitle}>{zone.title}</Text>
+                  <Text style={styles.zoneMeta}>按「{zone.keyword}」聚合</Text>
+                </Pressable>
+              ))}
+            </View>
             <Text style={styles.sectionTitle}>📋 推荐内容</Text>
             {error ? <Text style={styles.error}>加载失败：{error}</Text> : null}
           </View>
@@ -252,6 +291,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 8,
     marginBottom: 8,
+  },
+  zoneRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  zoneCard: {
+    flex: 1,
+    backgroundColor: '#1f6feb',
+    borderRadius: 12,
+    padding: 14,
+  },
+  zoneTitle: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  zoneMeta: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    marginTop: 4,
   },
   hint: {
     color: '#8b949e',

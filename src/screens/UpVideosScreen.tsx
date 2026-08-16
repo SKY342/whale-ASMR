@@ -7,6 +7,7 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import CoverImage from '../components/CoverImage';
 import { getUserVideos } from '../utils/bilibili-api';
 import type { BiliSearchResult } from '../utils/bilibili-api';
+import { playerQueueStore, toQueueItem } from '../store/playerQueueStore';
 import type { RootStackParamList } from '../navigation/types';
 
 /**
@@ -64,7 +65,12 @@ export default function UpVideosScreen() {
           renderItem={({ item }) => (
             <Pressable
               style={styles.card}
-              onPress={() =>
+              onPress={() => {
+                const list = items;
+                const index = list.findIndex((i) => i.id === item.id);
+                playerQueueStore
+                  .getState()
+                  .setQueue(list.map(toQueueItem), Math.max(index, 0), 'up-videos');
                 navigation.navigate('Player', {
                   id: item.id,
                   type: 'video',
@@ -72,8 +78,8 @@ export default function UpVideosScreen() {
                   author: item.author,
                   artwork: item.coverUrl,
                   duration: item.duration,
-                })
-              }
+                });
+              }}
             >
               <CoverImage uri={item.coverUrl} size={64} />
               <View style={styles.cardInfo}>

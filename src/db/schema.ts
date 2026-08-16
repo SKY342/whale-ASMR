@@ -175,6 +175,17 @@ export async function getPlaylistItems(playlistId: number): Promise<PlaylistItem
   }));
 }
 
+export async function hasPlaylistItem(
+  playlistId: number,
+  bvid: string,
+): Promise<boolean> {
+  const row = await db.getFirstAsync<{ count: number }>(
+    'SELECT COUNT(*) AS count FROM playlist_items WHERE playlist_id = ? AND bvid = ?',
+    [playlistId, bvid],
+  );
+  return Number(row?.count ?? 0) > 0;
+}
+
 export async function addPlaylistItem(
   playlistId: number,
   item: {
@@ -238,6 +249,16 @@ export async function addFollow(follow: {
   await db.runAsync(
     'INSERT OR REPLACE INTO follows (uid, name, avatar_url, home_url) VALUES (?, ?, ?, ?)',
     [follow.uid, follow.name ?? null, follow.avatarUrl ?? null, follow.homeUrl ?? null],
+  );
+}
+
+export async function updateFollowInfo(
+  id: number,
+  info: { name: string; avatarUrl: string; homeUrl?: string },
+): Promise<void> {
+  await db.runAsync(
+    'UPDATE follows SET name = ?, avatar_url = ?, home_url = ? WHERE id = ?',
+    [info.name, info.avatarUrl, info.homeUrl ?? null, id],
   );
 }
 

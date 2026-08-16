@@ -15,10 +15,12 @@ import { playerStore } from '../store/playerStore';
 import {
   seekTo,
   setRate,
-  skipToNext,
-  skipToPrevious,
   togglePlay,
 } from '../services/player/TrackPlayerService';
+import {
+  playNextInQueue,
+  playPreviousInQueue,
+} from '../services/player/PlayerQueueService';
 import { downloadAudio } from '../services/download/DownloadManager';
 import { findSubtitleLine } from '../services/subtitle/SubtitleService';
 import type { SubtitleLine } from '../services/sources';
@@ -27,6 +29,7 @@ import {
   addPlaylistItem,
   createPlaylist,
   getPlaylists,
+  hasPlaylistItem,
 } from '../db/schema';
 import type { Playlist } from '../db/schema';
 import CoverImage from './CoverImage';
@@ -116,6 +119,12 @@ export default function AudioPlayer({ subtitles }: Props) {
   const addToPlaylist = async (playlist: Playlist) => {
     if (!current) return;
     try {
+      const exists = await hasPlaylistItem(playlist.id, current.id);
+      if (exists) {
+        setPlaylistModalVisible(false);
+        Alert.alert('提示', '该音频已在歌单中');
+        return;
+      }
       await addPlaylistItem(playlist.id, {
         bvid: current.id,
         title: current.title,
@@ -197,13 +206,21 @@ export default function AudioPlayer({ subtitles }: Props) {
       )}
 
       <View style={styles.controls}>
-        <ControlButton icon="skip-previous" size={38} onPress={() => void skipToPrevious()} />
+        <ControlButton
+          icon="skip-previous"
+          size={38}
+          onPress={() => void playPreviousInQueue().catch(() => {})}
+        />
         <ControlButton
           icon={isPlaying ? 'pause-circle' : 'play-circle'}
           size={64}
           onPress={() => void togglePlay()}
         />
-        <ControlButton icon="skip-next" size={38} onPress={() => void skipToNext()} />
+        <ControlButton
+          icon="skip-next"
+          size={38}
+          onPress={() => void playNextInQueue().catch(() => {})}
+        />
       </View>
 
       <View style={styles.optionRow}>

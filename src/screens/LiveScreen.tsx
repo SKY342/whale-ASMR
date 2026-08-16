@@ -17,6 +17,7 @@ import { searchLiveRooms } from '../utils/bilibili-api';
 import { filterByKeywords } from '../services/filter/KeywordFilter';
 import { getBlockedKeywords } from '../db/schema';
 import { settingsStore } from '../store/settingsStore';
+import { playerQueueStore, toQueueItem } from '../store/playerQueueStore';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import type { SearchResult } from '../services/sources';
 
@@ -29,7 +30,6 @@ export default function LiveScreen() {
     tabNavigation.getParent<StackNavigationProp<RootStackParamList>>();
 
   const [items, setItems] = useState<SearchResult[]>([]);
-  const [keyword, setKeyword] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const blockedKeywords = settingsStore((s) => s.blockedKeywords);
@@ -37,6 +37,7 @@ export default function LiveScreen() {
   const refresh = useCallback(async () => {
     setRefreshing(true);
     setError(null);
+    setItems([]); // 下拉刷新：先清空旧列表
     try {
       const merged = new Map<string, SearchResult>();
       for (const kw of PRESET_KEYWORDS) {
@@ -67,11 +68,15 @@ export default function LiveScreen() {
   const goSearch = () => {
     stackNavigation?.navigate('SearchResults', {
       type: 'live',
-      keyword: keyword.trim() || undefined,
     });
   };
 
   const openLive = (item: SearchResult) => {
+    const list = filtered;
+    const index = list.findIndex((i) => i.id === item.id);
+    playerQueueStore
+      .getState()
+      .setQueue(list.map(toQueueItem), Math.max(index, 0), 'live');
     stackNavigation?.navigate('Player', {
       id: item.id,
       type: 'live',
@@ -88,10 +93,10 @@ export default function LiveScreen() {
       <View style={styles.header}>
         <View style={styles.searchRow}>
           <SearchBar
-            value={keyword}
+            value=""
             placeholder="搜索直播/助眠/白噪声..."
-            onChangeText={setKeyword}
-            onSubmit={goSearch}
+            onChangeText={() => {}}
+            onPress={goSearch}
           />
           <Pressable style={styles.searchButton} onPress={goSearch}>
             <Text style={styles.searchButtonText}>搜索</Text>

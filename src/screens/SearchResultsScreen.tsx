@@ -15,6 +15,7 @@ import CoverImage from '../components/CoverImage';
 import { searchLiveRooms, searchVideos } from '../utils/bilibili-api';
 import { filterByKeywords } from '../services/filter/KeywordFilter';
 import { settingsStore } from '../store/settingsStore';
+import { playerQueueStore, toQueueItem } from '../store/playerQueueStore';
 import type { RootStackParamList } from '../navigation/types';
 import type { SearchResult } from '../services/sources';
 
@@ -57,6 +58,10 @@ export default function SearchResultsScreen() {
   }, [initialKeyword, type]);
 
   const openPlayer = (item: SearchResult) => {
+    const index = results.findIndex((i) => i.id === item.id);
+    playerQueueStore
+      .getState()
+      .setQueue(results.map(toQueueItem), Math.max(index, 0), 'search');
     navigation.navigate('Player', {
       id: item.id,
       type: item.type,
@@ -78,6 +83,7 @@ export default function SearchResultsScreen() {
           placeholder={type === 'live' ? '搜索直播...' : '搜索视频...'}
           onChangeText={setKeyword}
           onSubmit={() => void doSearch()}
+          autoFocus
         />
         <Pressable style={styles.searchButton} onPress={() => void doSearch()}>
           <Text style={styles.searchButtonText}>搜索</Text>
@@ -93,6 +99,7 @@ export default function SearchResultsScreen() {
           data={results}
           keyExtractor={(item) => `${item.type}_${item.id}`}
           contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => (
             <Pressable style={styles.card} onPress={() => openPlayer(item)}>
               <CoverImage uri={item.coverUrl} size={64} />
