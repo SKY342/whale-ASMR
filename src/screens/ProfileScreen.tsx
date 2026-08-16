@@ -15,11 +15,14 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import {
   addFavorite,
   addFollow,
+  deleteFavorite,
+  deleteFollow,
   getFavorites,
   getFollows,
 } from '../db/schema';
 import { routeBilibiliUrl } from '../services/router/UrlRouter';
 import { getVideoInfo } from '../utils/bilibili-api';
+import { buildUpHomeUrl, parseUpMid } from '../utils/bili-router';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 
 export default function ProfileScreen() {
@@ -49,9 +52,13 @@ export default function ProfileScreen() {
     if (!url) return;
     try {
       // 支持 space.bilibili.com/<mid> 或视频链接
-      const spaceMatch = url.match(/space\.bilibili\.com\/(\d+)/);
-      if (spaceMatch?.[1]) {
-        await addFollow({ uid: spaceMatch[1], name: `UP主 ${spaceMatch[1]}`, homeUrl: `https://space.bilibili.com/${spaceMatch[1]}` });
+      const midFromUrl = parseUpMid(url);
+      if (midFromUrl) {
+        await addFollow({
+          uid: midFromUrl,
+          name: `UP主 ${midFromUrl}`,
+          homeUrl: buildUpHomeUrl(midFromUrl),
+        });
       } else {
         const routed = await routeBilibiliUrl(url);
         if (!routed || routed.type !== 'video') {
@@ -59,7 +66,11 @@ export default function ProfileScreen() {
           return;
         }
         const info = await getVideoInfo(routed.id);
-        await addFollow({ uid: String(info.mid), name: info.author, homeUrl: `https://space.bilibili.com/${info.mid}` });
+        await addFollow({
+          uid: String(info.mid),
+          name: info.author,
+          homeUrl: buildUpHomeUrl(info.mid),
+        });
       }
       setFollowUrl('');
       refresh();
@@ -104,6 +115,32 @@ export default function ProfileScreen() {
     });
   };
 
+  const confirmDeleteFollow = (follow: { id: number; name: string | null; uid: string }) => {
+    Alert.alert('取消关注', `确定取消关注「${follow.name ?? follow.uid}」吗？`, [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '取消关注',
+        style: 'destructive',
+        onPress: () => {
+          void deleteFollow(follow.id).then(refresh);
+        },
+      },
+    ]);
+  };
+
+  const confirmDeleteFavorite = (favorite: { id: number; title: string | null; url: string | null }) => {
+    Alert.alert('删除收藏', `确定删除收藏「${favorite.title ?? favorite.url}」吗？`, [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '删除',
+        style: 'destructive',
+        onPress: () => {
+          void deleteFavorite(favorite.id).then(refresh);
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView>
@@ -123,9 +160,14 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
         {follows.map((item) => (
-          <Pressable key={String(item.id)} style={styles.card} onPress={() => openFollow(item)}>
+          <Pressable
+            key={String(item.id)}
+            style={styles.card}
+            onPress={() => openFollow(item)}
+            onLongPress={() => confirmDeleteFollow(item)}
+          >
             <Text style={styles.cardTitle}>UP主: {item.name ?? item.uid}</Text>
-            <Text style={styles.cardMeta}>点击查看TA的作品 →</Text>
+            <Text style={styles.cardMeta}>点击查看TA的作品 · 长按取消关注</Text>
           </Pressable>
         ))}
 
@@ -143,11 +185,16 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
         {favorites.map((item) => (
-          <Pressable key={String(item.id)} style={styles.card} onPress={() => void openFavorite(item.url)}>
+          <Pressable
+            key={String(item.id)}
+            style={styles.card}
+            onPress={() => void openFavorite(item.url)}
+            onLongPress={() => confirmDeleteFavorite(item)}
+          >
             <Text style={styles.cardTitle} numberOfLines={1}>
               收藏: {item.title ?? item.url}
             </Text>
-            <Text style={styles.cardMeta}>点击在App内打开 →</Text>
+            <Text style={styles.cardMeta}>点击在App内打开 · 长按删除</Text>
           </Pressable>
         ))}
 

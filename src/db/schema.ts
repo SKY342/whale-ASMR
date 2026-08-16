@@ -241,6 +241,14 @@ export async function addFollow(follow: {
   );
 }
 
+export async function deleteFollow(id: number): Promise<void> {
+  await db.runAsync('DELETE FROM follows WHERE id = ?', [id]);
+}
+
+export async function deleteFavorite(id: number): Promise<void> {
+  await db.runAsync('DELETE FROM favorites WHERE id = ?', [id]);
+}
+
 export async function getFavorites(): Promise<FavoriteItem[]> {
   const rows = await db.getAllAsync<any>(
     'SELECT id, media_id, title, url FROM favorites ORDER BY favorited_at DESC',

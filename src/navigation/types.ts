@@ -8,6 +8,10 @@ export type RootStackParamList = {
     artwork?: string;
     duration?: number;
   };
+  SearchResults: {
+    type: 'video' | 'live';
+    keyword?: string;
+  };
   Downloads: undefined;
   Settings: undefined;
   UpVideos: {
@@ -19,7 +23,7 @@ export type RootStackParamList = {
 
 export type MainTabParamList = {
   Home: undefined;
-  Search: { keyword?: string } | undefined;
+  Live: undefined;
   Playlist: undefined;
   Profile: undefined;
 };

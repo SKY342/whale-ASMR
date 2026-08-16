@@ -3,6 +3,7 @@ import {
   getVideoAudioStream,
   getVideoInfo,
   getVideoSubtitles,
+  searchLiveRooms,
   searchVideos,
 } from '../../utils/bilibili-api';
 import type {
@@ -25,6 +26,11 @@ export class BilibiliSource implements MusicSource {
   async search(keyword: string): Promise<SearchResult[]> {
     const videos = await searchVideos(keyword.trim());
     return videos;
+  }
+
+  async searchLive(keyword: string): Promise<SearchResult[]> {
+    const rooms = await searchLiveRooms(keyword.trim());
+    return rooms;
   }
 
   async getAudioUrl(

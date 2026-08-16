@@ -1,11 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  FlatList,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { Button, Menu } from 'react-native-paper';
 import { playerStore } from '../store/playerStore';
 import {
   seekTo,
   setRate,
-  stopPlayback,
+  skipToNext,
+  skipToPrevious,
   togglePlay,
 } from '../services/player/TrackPlayerService';
 import { downloadAudio } from '../services/download/DownloadManager';
@@ -17,6 +28,7 @@ import {
   createPlaylist,
   getPlaylists,
 } from '../db/schema';
+import type { Playlist } from '../db/schema';
 import CoverImage from './CoverImage';
 import ControlButton from './ControlButton';
 import SleepTimer from './SleepTimer';
@@ -41,6 +53,9 @@ export default function AudioPlayer({ subtitles }: Props) {
   const [rate, setRateState] = useState(1.0);
   const [subtitleText, setSubtitleText] = useState<string | null>(null);
   const [progressWidth, setProgressWidth] = useState(1);
+  const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
 
   const isLive = current?.type === 'live';
   const duration = current?.duration ?? 0;
@@ -86,31 +101,49 @@ export default function AudioPlayer({ subtitles }: Props) {
       );
   };
 
-  const handleAddToPlaylist = async () => {
+  const openPlaylistSelector = async () => {
     if (!current) return;
     try {
-      let playlists = await getPlaylists();
-      if (playlists.length === 0) {
-        await createPlaylist('默认歌单');
-        playlists = await getPlaylists();
-      }
-      const target = playlists[0];
-      await addPlaylistItem(target.id, {
+      const list = await getPlaylists();
+      setPlaylists(list);
+      setNewPlaylistName('');
+      setPlaylistModalVisible(true);
+    } catch (error) {
+      Alert.alert('打开歌单失败', String((error as Error)?.message ?? error));
+    }
+  };
+
+  const addToPlaylist = async (playlist: Playlist) => {
+    if (!current) return;
+    try {
+      await addPlaylistItem(playlist.id, {
         bvid: current.id,
         title: current.title,
         coverUrl: current.artwork,
         audioUrl: undefined,
         duration: current.duration || undefined,
       });
-      Alert.alert('已加入歌单', `已添加到「${target.name}」`);
+      setPlaylistModalVisible(false);
+      Alert.alert('已加入歌单', `已添加到「${playlist.name}」`);
     } catch (error) {
       Alert.alert('加入歌单失败', String((error as Error)?.message ?? error));
     }
   };
 
-  const handleStop = () => {
-    void stopPlayback();
-    playerStore.getState().clear();
+  const createAndAdd = async () => {
+    if (!current) return;
+    const name = newPlaylistName.trim();
+    if (!name) return;
+    try {
+      await createPlaylist(name);
+      const list = await getPlaylists();
+      setPlaylists(list);
+      setNewPlaylistName('');
+      const created = list.find((p) => p.name === name);
+      if (created) await addToPlaylist(created);
+    } catch (error) {
+      Alert.alert('新建歌单失败', String((error as Error)?.message ?? error));
+    }
   };
 
   const recordHistory = () => {
@@ -124,6 +157,7 @@ export default function AudioPlayer({ subtitles }: Props) {
   };
 
   return (
+    <>
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.coverWrapper}>
         <CoverImage uri={current.artwork} size={220} style={styles.cover} />
@@ -163,13 +197,13 @@ export default function AudioPlayer({ subtitles }: Props) {
       )}
 
       <View style={styles.controls}>
-        <ControlButton icon="skip-previous" size={38} onPress={() => void seekTo(0)} />
+        <ControlButton icon="skip-previous" size={38} onPress={() => void skipToPrevious()} />
         <ControlButton
           icon={isPlaying ? 'pause-circle' : 'play-circle'}
           size={64}
           onPress={() => void togglePlay()}
         />
-        <ControlButton icon="stop-circle" size={38} onPress={handleStop} />
+        <ControlButton icon="skip-next" size={38} onPress={() => void skipToNext()} />
       </View>
 
       <View style={styles.optionRow}>
@@ -194,7 +228,7 @@ export default function AudioPlayer({ subtitles }: Props) {
         <Button mode="text" textColor="#e6edf3" onPress={handleDownload}>
           ⬇ 下载音频
         </Button>
-        <Button mode="text" textColor="#e6edf3" onPress={handleAddToPlaylist}>
+        <Button mode="text" textColor="#e6edf3" onPress={() => void openPlaylistSelector()}>
           ➕ 加入歌单
         </Button>
       </View>
@@ -211,6 +245,41 @@ export default function AudioPlayer({ subtitles }: Props) {
         保存播放进度
       </Button>
     </ScrollView>
+
+    <Modal visible={playlistModalVisible} transparent animationType="slide">
+      <View style={styles.modalMask}>
+        <View style={styles.modalBox}>
+          <Text style={styles.modalTitle}>选择要加入的歌单</Text>
+          <FlatList
+            data={playlists}
+            keyExtractor={(item) => String(item.id)}
+            style={styles.playlistList}
+            renderItem={({ item }) => (
+              <Pressable style={styles.playlistRow} onPress={() => void addToPlaylist(item)}>
+                <Text style={styles.playlistName}>🎵 {item.name}</Text>
+              </Pressable>
+            )}
+            ListEmptyComponent={<Text style={styles.modalHint}>暂无歌单，请先新建</Text>}
+          />
+          <View style={styles.modalCreateRow}>
+            <TextInput
+              style={styles.modalInput}
+              value={newPlaylistName}
+              placeholder="新建歌单名称"
+              placeholderTextColor="#8b949e"
+              onChangeText={setNewPlaylistName}
+            />
+            <Pressable style={styles.modalOk} onPress={() => void createAndAdd()}>
+              <Text style={styles.modalOkText}>新建并添加</Text>
+            </Pressable>
+          </View>
+          <Pressable style={styles.modalCancel} onPress={() => setPlaylistModalVisible(false)}>
+            <Text style={styles.modalCancelText}>取消</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+    </>
   );
 }
 
@@ -316,5 +385,75 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     textAlign: 'center',
+  },
+  modalMask: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalBox: {
+    backgroundColor: '#161b22',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 16,
+    paddingBottom: 24,
+    maxHeight: '70%',
+  },
+  modalTitle: {
+    color: '#e6edf3',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  playlistList: {
+    marginBottom: 10,
+  },
+  playlistRow: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#21262d',
+  },
+  playlistName: {
+    color: '#e6edf3',
+    fontSize: 15,
+  },
+  modalHint: {
+    color: '#8b949e',
+    fontSize: 13,
+    paddingVertical: 10,
+  },
+  modalCreateRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  modalInput: {
+    flex: 1,
+    height: 40,
+    backgroundColor: '#0d1117',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    color: '#e6edf3',
+  },
+  modalOk: {
+    backgroundColor: '#1f6feb',
+    paddingHorizontal: 14,
+    height: 40,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalOkText: {
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  modalCancel: {
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: '#8b949e',
+    fontSize: 15,
   },
 });

@@ -143,6 +143,37 @@ export async function searchVideos(
     }));
 }
 
+// ---------- 直播搜索 ----------
+
+export async function searchLiveRooms(
+  keyword: string,
+  page = 1,
+): Promise<BiliSearchResult[]> {
+  await ensureBuvid3();
+  const referer = `https://search.bilibili.com/all?keyword=${encodeURIComponent(keyword)}`;
+  const res = await axios.get(
+    'https://api.bilibili.com/x/web-interface/search/type',
+    {
+      params: { search_type: 'live_room', keyword, page, page_size: 20 },
+      headers: headers(referer),
+      timeout: 10000,
+    },
+  );
+
+  const list: any[] = res.data?.data?.result ?? [];
+  return list
+    .filter((item) => item?.roomid != null)
+    .map((item) => ({
+      id: String(item.roomid),
+      type: 'live' as const,
+      title: String(item.title ?? '').replace(/<[^>]+>/g, ''),
+      author: String(item.uname ?? ''),
+      coverUrl: normalizeUrl(item.cover ?? item.user_cover ?? ''),
+      playCount: item.online != null ? `${item.online}人在线` : undefined,
+      description: String(item.area_name ?? ''),
+    }));
+}
+
 // ---------- 视频信息 ----------
 
 export async function getVideoInfo(bvid: string): Promise<VideoInfo> {

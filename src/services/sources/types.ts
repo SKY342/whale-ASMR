@@ -40,6 +40,9 @@ export interface MusicSource {
 
   search(keyword: string): Promise<SearchResult[]>;
 
+  /** 直播搜索（可选）：搜索直播间。 */
+  searchLive?(keyword: string): Promise<SearchResult[]>;
+
   getAudioUrl(
     id: string,
     type: 'video' | 'live',

@@ -13,103 +13,71 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import SearchBar from '../components/SearchBar';
 import CoverImage from '../components/CoverImage';
-import { getHomeRecommendations, searchVideos } from '../utils/bilibili-api';
+import { searchLiveRooms } from '../utils/bilibili-api';
 import { filterByKeywords } from '../services/filter/KeywordFilter';
-import { getBlockedKeywords, getPlayHistory } from '../db/schema';
+import { getBlockedKeywords } from '../db/schema';
 import { settingsStore } from '../store/settingsStore';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import type { SearchResult } from '../services/sources';
 
-const CATEGORIES = ['全部', '助眠', '白噪声', '自然音', 'ASMR'];
+const PRESET_KEYWORDS = ['助眠', '白噪声', 'ASMR', '雨声', '自然音'];
 
-export default function HomeScreen() {
+export default function LiveScreen() {
   const tabNavigation =
     useNavigation<BottomTabNavigationProp<MainTabParamList>>();
   const stackNavigation =
     tabNavigation.getParent<StackNavigationProp<RootStackParamList>>();
 
   const [items, setItems] = useState<SearchResult[]>([]);
-  const [category, setCategory] = useState('全部');
   const [keyword, setKeyword] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<{ title: string }[]>([]);
   const blockedKeywords = settingsStore((s) => s.blockedKeywords);
-
-  const loadKeywordsAndHistory = useCallback(async () => {
-    const [keywords, histories] = await Promise.all([
-      getBlockedKeywords(),
-      getPlayHistory(),
-    ]);
-    settingsStore.getState().setBlockedKeywords(keywords);
-    setHistory(
-      histories.slice(0, 3).map((item) => ({ title: item.title ?? '未知音频' })),
-    );
-  }, []);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
     setError(null);
     try {
-      const keywordForLoad = category === '全部' ? null : category;
-      const list = keywordForLoad
-        ? await searchVideos(keywordForLoad, 1)
-        : await getHomeRecommendations();
-      setItems(list);
-      setPage(1);
-      setHasMore(list.length > 0);
-      await loadKeywordsAndHistory();
+      const merged = new Map<string, SearchResult>();
+      for (const kw of PRESET_KEYWORDS) {
+        try {
+          const list = await searchLiveRooms(kw, 1);
+          for (const item of list) {
+            if (!merged.has(item.id)) merged.set(item.id, item);
+          }
+        } catch {
+          // 单个关键词失败不影响整体
+        }
+        if (merged.size >= 30) break;
+      }
+      setItems(Array.from(merged.values()));
+      const keywords = await getBlockedKeywords();
+      settingsStore.getState().setBlockedKeywords(keywords);
     } catch (e) {
       setError(String((e as Error)?.message ?? e));
-      setItems([]);
     } finally {
       setRefreshing(false);
     }
-  }, [category, loadKeywordsAndHistory]);
+  }, []);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  const loadMore = async () => {
-    if (loadingMore || !hasMore || refreshing) return;
-    setLoadingMore(true);
-    try {
-      const keywordForLoad = category === '全部' ? '助眠' : category;
-      const nextPage = page + 1;
-      const more = await searchVideos(keywordForLoad, nextPage);
-      setItems((prev) => {
-        const seen = new Set(prev.map((item) => item.id));
-        const appended = more.filter((item) => !seen.has(item.id));
-        return [...prev, ...appended];
-      });
-      setPage(nextPage);
-      setHasMore(more.length > 0);
-    } catch {
-      setHasMore(false);
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
   const goSearch = () => {
     stackNavigation?.navigate('SearchResults', {
-      type: 'video',
+      type: 'live',
       keyword: keyword.trim() || undefined,
     });
   };
 
-  const openPlayer = (item: SearchResult) => {
+  const openLive = (item: SearchResult) => {
     stackNavigation?.navigate('Player', {
       id: item.id,
-      type: item.type,
+      type: 'live',
       title: item.title,
       author: item.author,
       artwork: item.coverUrl,
-      duration: item.duration,
     });
   };
 
@@ -121,7 +89,7 @@ export default function HomeScreen() {
         <View style={styles.searchRow}>
           <SearchBar
             value={keyword}
-            placeholder="搜索视频/助眠/白噪声..."
+            placeholder="搜索直播/助眠/白噪声..."
             onChangeText={setKeyword}
             onSubmit={goSearch}
           />
@@ -138,50 +106,20 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor="#8b949e" />
         }
-        onEndReachedThreshold={0.3}
-        onEndReached={() => void loadMore()}
         ListHeaderComponent={
-          <View>
-            <FlatList
-              horizontal
-              data={CATEGORIES}
-              keyExtractor={(cat) => cat}
-              showsHorizontalScrollIndicator={false}
-              style={styles.categories}
-              renderItem={({ item: cat }) => (
-                <Pressable
-                  style={[styles.categoryChip, category === cat && styles.categoryChipActive]}
-                  onPress={() => setCategory(cat)}
-                >
-                  <Text style={[styles.categoryText, category === cat && styles.categoryTextActive]}>
-                    {cat}
-                  </Text>
-                </Pressable>
-              )}
-            />
-            <Text style={styles.sectionTitle}>📋 推荐内容</Text>
-            {error ? <Text style={styles.error}>加载失败：{error}</Text> : null}
-          </View>
+          <Text style={styles.sectionTitle}>🔴 助眠/白噪声直播</Text>
         }
         ListEmptyComponent={
           <View>
-            {!refreshing && !error ? <Text style={styles.hint}>暂无推荐内容，下拉刷新试试</Text> : null}
+            {!refreshing ? <Text style={styles.hint}>{error ? `加载失败：${error}` : '暂无直播，下拉刷新试试'}</Text> : null}
           </View>
         }
-        ListFooterComponent={
-          loadingMore ? (
-            <Text style={styles.hint}>加载中...</Text>
-          ) : !hasMore && filtered.length > 0 ? (
-            <Text style={styles.hint}>没有更多了</Text>
-          ) : null
-        }
         renderItem={({ item }) => (
-          <Pressable style={styles.card} onPress={() => openPlayer(item)}>
+          <Pressable style={styles.card} onPress={() => openLive(item)}>
             <CoverImage uri={item.coverUrl} size={72} />
             <View style={styles.cardInfo}>
               <Text style={styles.cardTitle} numberOfLines={2}>
-                {item.type === 'live' ? '🔴 ' : ''}
-                {item.title}
+                🔴 {item.title}
               </Text>
               <Text style={styles.cardMeta}>
                 {item.author}
@@ -226,26 +164,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 120,
   },
-  categories: {
-    marginVertical: 10,
-  },
-  categoryChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 16,
-    backgroundColor: '#161b22',
-    marginRight: 8,
-  },
-  categoryChipActive: {
-    backgroundColor: '#1f6feb',
-  },
-  categoryText: {
-    color: '#8b949e',
-    fontSize: 13,
-  },
-  categoryTextActive: {
-    color: '#ffffff',
-  },
   sectionTitle: {
     color: '#e6edf3',
     fontSize: 16,
@@ -256,13 +174,8 @@ const styles = StyleSheet.create({
   hint: {
     color: '#8b949e',
     fontSize: 13,
-    marginBottom: 10,
     textAlign: 'center',
-  },
-  error: {
-    color: '#ff7b72',
-    fontSize: 13,
-    marginBottom: 10,
+    marginTop: 20,
   },
   card: {
     flexDirection: 'row',

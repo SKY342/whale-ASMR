@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { playerStore } from '../store/playerStore';
 import { togglePlay } from '../services/player/TrackPlayerService';
 import { navigateToPlayer } from '../navigation/navigationRef';
@@ -11,13 +12,14 @@ import ControlButton from './ControlButton';
  * 点击信息区展开进入完整播放器页。
  */
 export default function MiniPlayer() {
+  const insets = useSafeAreaInsets();
   const current = playerStore((s) => s.current);
   const isPlaying = playerStore((s) => s.isPlaying);
 
   if (!current) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { bottom: insets.bottom + 58 }]}>
       <Pressable
         style={styles.infoArea}
         onPress={() =>
@@ -55,7 +57,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 12,
     right: 12,
-    bottom: 8,
     backgroundColor: '#161b22',
     borderRadius: 12,
     borderWidth: 1,

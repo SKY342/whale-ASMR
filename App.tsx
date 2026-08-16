@@ -9,10 +9,11 @@ import { StatusBar } from 'expo-status-bar';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import HomeScreen from './src/screens/HomeScreen';
-import SearchScreen from './src/screens/SearchScreen';
+import LiveScreen from './src/screens/LiveScreen';
 import PlaylistScreen from './src/screens/PlaylistScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import PlayerScreen from './src/screens/PlayerScreen';
+import SearchResultsScreen from './src/screens/SearchResultsScreen';
 import DownloadScreen from './src/screens/DownloadScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import UpVideosScreen from './src/screens/UpVideosScreen';
@@ -43,8 +44,8 @@ function MainTabs() {
         tabBarInactiveTintColor: '#8b949e',
         tabBarIcon: ({ color, size }) => {
           const icons: Record<string, string> = {
-            Home: 'home-variant',
-            Search: 'magnify',
+            Home: 'video-vintage',
+            Live: 'access-point',
             Playlist: 'playlist-music',
             Profile: 'account-circle',
           };
@@ -58,8 +59,8 @@ function MainTabs() {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ title: '首页' }} />
-      <Tab.Screen name="Search" component={SearchScreen} options={{ title: '搜索' }} />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ title: '视频' }} />
+      <Tab.Screen name="Live" component={LiveScreen} options={{ title: '直播' }} />
       <Tab.Screen name="Playlist" component={PlaylistScreen} options={{ title: '歌单' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: '我的' }} />
     </Tab.Navigator>
@@ -89,6 +90,7 @@ export default function App() {
             <Stack.Navigator screenOptions={{ headerShown: false }}>
               <Stack.Screen name="MainTabs" component={MainTabs} />
               <Stack.Screen name="Player" component={PlayerScreen} />
+              <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
               <Stack.Screen name="Downloads" component={DownloadScreen} />
               <Stack.Screen name="Settings" component={SettingsScreen} />
               <Stack.Screen name="UpVideos" component={UpVideosScreen} />

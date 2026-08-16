@@ -50,6 +50,8 @@ export async function setupPlayer(): Promise<void> {
       Capability.SkipToNext,
       Capability.SkipToPrevious,
     ],
+    // 关键：不设置时部分 Android 设备不会回调播放进度，导致时间戳不动
+    progressUpdateEventInterval: 1,
   });
 }
 
@@ -107,11 +109,19 @@ export async function seekTo(seconds: number): Promise<void> {
 }
 
 export async function skipToNext(): Promise<void> {
-  await TrackPlayer.skipToNext();
+  try {
+    await TrackPlayer.skipToNext();
+  } catch {
+    // 单曲队列时忽略
+  }
 }
 
 export async function skipToPrevious(): Promise<void> {
-  await TrackPlayer.skipToPrevious();
+  try {
+    await TrackPlayer.skipToPrevious();
+  } catch {
+    // 单曲队列时忽略
+  }
 }
 
 export async function stopPlayback(): Promise<void> {

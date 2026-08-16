@@ -11,6 +11,7 @@ import TrackPlayer from 'react-native-track-player';
  */
 
 let sleepTimerHandle: ReturnType<typeof setTimeout> | null = null;
+let sleepEndAt: number | null = null;
 
 export interface SleepTimerOptions {
   minutes: number;
@@ -22,6 +23,8 @@ export interface SleepTimerOptions {
 export function startSleepTimer(options: SleepTimerOptions): void {
   cancelSleepTimer();
   const { minutes, fadeOut = true, onFinish } = options;
+
+  sleepEndAt = Date.now() + minutes * 60 * 1000;
 
   sleepTimerHandle = setTimeout(async () => {
     try {
@@ -45,6 +48,7 @@ export function startSleepTimer(options: SleepTimerOptions): void {
       }
     } finally {
       sleepTimerHandle = null;
+      sleepEndAt = null;
       onFinish?.();
     }
   }, minutes * 60 * 1000);
@@ -55,10 +59,16 @@ export function cancelSleepTimer(): void {
     clearTimeout(sleepTimerHandle);
     sleepTimerHandle = null;
   }
+  sleepEndAt = null;
 }
 
 export function isSleepTimerActive(): boolean {
-  return sleepTimerHandle !== null;
+  return sleepTimerHandle !== null && sleepEndAt !== null;
+}
+
+export function getSleepTimerRemainingSeconds(): number {
+  if (!sleepEndAt) return 0;
+  return Math.max(0, Math.round((sleepEndAt - Date.now()) / 1000));
 }
 
 function delay(ms: number): Promise<void> {
