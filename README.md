@@ -71,6 +71,8 @@ npm run typecheck  # TypeScript 类型检查
    生产环境建议引入原生后台计时器。前台/锁屏播放场景可正常使用。
 5. **API 接入策略**：默认免登录公开 API；受限时可调用 `setBilibiliCookie()` 注入 Cookie
    （优先级2），优先级3为 WebView 方式（未实现）。
+ PS：  做这个的原因是因为晚上在B站找ASMR视频时总是开始刷视频，最后很晚才睡
+   下次更新时间未知，有空再说。 
 
 ## 免责声明
 
