@@ -10,3 +10,13 @@ declare module 'react-native-vector-icons/MaterialCommunityIcons' {
 
   export default class MaterialCommunityIcons extends Component<MaterialCommunityIconsProps> {}
 }
+
+declare module '*.png' {
+  const source: number;
+  export default source;
+}
+
+declare module '*.jpg' {
+  const source: number;
+  export default source;
+}

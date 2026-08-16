@@ -19,6 +19,8 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import UpVideosScreen from './src/screens/UpVideosScreen';
 import DiagnosticsScreen from './src/screens/DiagnosticsScreen';
 import MiniPlayer from './src/components/MiniPlayer';
+import GlobalBackground from './src/components/GlobalBackground';
+import ThemedDialog from './src/components/ThemedDialog';
 import { initDatabase, getBlockedKeywords } from './src/db/schema';
 import {
   attachPlayerListeners,
@@ -37,8 +39,8 @@ function MainTabs() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#161b22',
-          borderTopColor: '#21262d',
+          backgroundColor: '#262B5C',
+          borderTopColor: '#3a4287',
         },
         tabBarActiveTintColor: '#58a6ff',
         tabBarInactiveTintColor: '#8b949e',
@@ -85,20 +87,23 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <PaperProvider theme={MD3DarkTheme}>
-        <NavigationContainer ref={navigationRef} theme={DarkTheme}>
-          <View style={styles.root}>
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="MainTabs" component={MainTabs} />
-              <Stack.Screen name="Player" component={PlayerScreen} />
-              <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
-              <Stack.Screen name="Downloads" component={DownloadScreen} />
-              <Stack.Screen name="Settings" component={SettingsScreen} />
-              <Stack.Screen name="UpVideos" component={UpVideosScreen} />
-              <Stack.Screen name="Diagnostics" component={DiagnosticsScreen} />
-            </Stack.Navigator>
-            <MiniPlayer />
-          </View>
-        </NavigationContainer>
+        <GlobalBackground>
+          <NavigationContainer ref={navigationRef} theme={DarkTheme}>
+            <View style={styles.root}>
+              <Stack.Navigator screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="MainTabs" component={MainTabs} />
+                <Stack.Screen name="Player" component={PlayerScreen} />
+                <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
+                <Stack.Screen name="Downloads" component={DownloadScreen} />
+                <Stack.Screen name="Settings" component={SettingsScreen} />
+                <Stack.Screen name="UpVideos" component={UpVideosScreen} />
+                <Stack.Screen name="Diagnostics" component={DiagnosticsScreen} />
+              </Stack.Navigator>
+              <MiniPlayer />
+            </View>
+          </NavigationContainer>
+        </GlobalBackground>
+        <ThemedDialog />
         <StatusBar style="light" />
       </PaperProvider>
     </SafeAreaProvider>
@@ -108,6 +113,6 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#0d1117',
+    backgroundColor: 'transparent',
   },
 });

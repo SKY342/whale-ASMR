@@ -55,6 +55,9 @@ export default function SearchBar({
 
 const styles = StyleSheet.create({
   container: {
+    // 关键：在横向布局中占满剩余宽度，否则输入区域会收缩得几乎不可见/不可点击
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#242d38',
@@ -65,12 +68,14 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0,
     color: '#ffffff',
     fontSize: 15,
     paddingVertical: 0,
   },
   placeholderText: {
     flex: 1,
+    minWidth: 0,
     color: '#8b98a5',
     fontSize: 15,
   },

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -12,6 +11,7 @@ import {
 } from 'react-native';
 import { Button, Menu } from 'react-native-paper';
 import { playerStore } from '../store/playerStore';
+import { showDialog } from '../store/dialogStore';
 import {
   seekTo,
   setRate,
@@ -118,13 +118,17 @@ export default function AudioPlayer({ subtitles }: Props) {
   const handleDownload = () => {
     if (!current) return;
     if (isLive) {
-      Alert.alert('提示', '直播流暂不支持下载');
+      showDialog('提示', '直播流暂不支持下载', [{ text: '知道了' }]);
       return;
     }
     void downloadAudio(current.id, current.type, current.title)
-      .then(() => Alert.alert('下载完成', '已保存到下载管理'))
+      .then(() =>
+        showDialog('下载完成', '已保存到下载管理', [{ text: '知道了' }]),
+      )
       .catch((error: unknown) =>
-        Alert.alert('下载失败', String((error as Error)?.message ?? error)),
+        showDialog('下载失败', String((error as Error)?.message ?? error), [
+          { text: '知道了' },
+        ]),
       );
   };
 
@@ -136,7 +140,9 @@ export default function AudioPlayer({ subtitles }: Props) {
       setNewPlaylistName('');
       setPlaylistModalVisible(true);
     } catch (error) {
-      Alert.alert('打开歌单失败', String((error as Error)?.message ?? error));
+      showDialog('打开歌单失败', String((error as Error)?.message ?? error), [
+        { text: '知道了' },
+      ]);
     }
   };
 
@@ -146,7 +152,7 @@ export default function AudioPlayer({ subtitles }: Props) {
       const exists = await hasPlaylistItem(playlist.id, current.id);
       if (exists) {
         setPlaylistModalVisible(false);
-        Alert.alert('提示', '该音频已在歌单中');
+        showDialog('提示', '该音频已在歌单中', [{ text: '知道了' }]);
         return;
       }
       await addPlaylistItem(playlist.id, {
@@ -157,9 +163,13 @@ export default function AudioPlayer({ subtitles }: Props) {
         duration: current.duration || undefined,
       });
       setPlaylistModalVisible(false);
-      Alert.alert('已加入歌单', `已添加到「${playlist.name}」`);
+      showDialog('已加入歌单', `已添加到「${playlist.name}」`, [
+        { text: '知道了' },
+      ]);
     } catch (error) {
-      Alert.alert('加入歌单失败', String((error as Error)?.message ?? error));
+      showDialog('加入歌单失败', String((error as Error)?.message ?? error), [
+        { text: '知道了' },
+      ]);
     }
   };
 
@@ -175,9 +185,11 @@ export default function AudioPlayer({ subtitles }: Props) {
         homeUrl: buildUpHomeUrl(up.mid),
       });
       setIsFollowed(true);
-      Alert.alert('已关注', `已关注 UP主 ${up.name}`);
+      showDialog('已关注', `已关注 UP主 ${up.name}`, [{ text: '知道了' }]);
     } catch (error) {
-      Alert.alert('关注失败', String((error as Error)?.message ?? error));
+      showDialog('关注失败', String((error as Error)?.message ?? error), [
+        { text: '知道了' },
+      ]);
     } finally {
       setFollowLoading(false);
     }
@@ -195,7 +207,9 @@ export default function AudioPlayer({ subtitles }: Props) {
       const created = list.find((p) => p.name === name);
       if (created) await addToPlaylist(created);
     } catch (error) {
-      Alert.alert('新建歌单失败', String((error as Error)?.message ?? error));
+      showDialog('新建歌单失败', String((error as Error)?.message ?? error), [
+        { text: '知道了' },
+      ]);
     }
   };
 

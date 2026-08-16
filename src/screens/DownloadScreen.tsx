@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   deleteDownload,
@@ -7,6 +7,7 @@ import {
   getStorageUsage,
 } from '../services/download/DownloadManager';
 import { downloadStore } from '../store/downloadStore';
+import { showDialog } from '../store/dialogStore';
 
 export default function DownloadScreen() {
   const items = downloadStore((s) => s.items);
@@ -26,7 +27,7 @@ export default function DownloadScreen() {
   }, []);
 
   const handleDelete = (item: { filePath: string; title: string }) => {
-    Alert.alert('删除下载', `确定删除「${item.title}」的音频文件吗？`, [
+    showDialog('删除下载', `确定删除「${item.title}」的音频文件吗？`, [
       { text: '取消', style: 'cancel' },
       {
         text: '删除',
@@ -85,7 +86,7 @@ function formatBytes(bytes: number): string {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0d1117',
+    backgroundColor: 'transparent',
     paddingHorizontal: 16,
   },
   title: {

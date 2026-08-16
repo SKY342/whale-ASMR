@@ -120,7 +120,7 @@ export default function DiagnosticsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0d1117',
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,6 +25,7 @@ import { getUpInfo, getVideoInfo } from '../utils/bilibili-api';
 import { buildUpHomeUrl, parseUpMid } from '../utils/bili-router';
 import CoverImage from '../components/CoverImage';
 import { playerQueueStore, toQueueItem } from '../store/playerQueueStore';
+import { showDialog } from '../store/dialogStore';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 
 export default function ProfileScreen() {
@@ -99,7 +99,9 @@ export default function ProfileScreen() {
       } else {
         const routed = await routeBilibiliUrl(url);
         if (!routed || routed.type !== 'video') {
-          Alert.alert('提示', '请输入UP主空间链接（space.bilibili.com/数字）或视频链接');
+          showDialog('提示', '请输入UP主空间链接（space.bilibili.com/数字）或视频链接', [
+            { text: '知道了' },
+          ]);
           return;
         }
         const info = await getVideoInfo(routed.id);
@@ -111,9 +113,11 @@ export default function ProfileScreen() {
       }
       setFollowUrl('');
       refresh();
-      Alert.alert('已添加关注', '点击关注项即可查看该UP主的作品');
+      showDialog('已添加关注', '点击关注项即可查看该UP主的作品', [{ text: '知道了' }]);
     } catch (e) {
-      Alert.alert('添加关注失败', String((e as Error)?.message ?? e));
+      showDialog('添加关注失败', String((e as Error)?.message ?? e), [
+        { text: '知道了' },
+      ]);
     }
   };
 
@@ -123,7 +127,9 @@ export default function ProfileScreen() {
     await addFavorite({ mediaId: `manual_${Date.now()}`, title: url, url });
     setFavoriteUrl('');
     refresh();
-    Alert.alert('已收藏', '点击收藏项可在App内打开（视频/直播链接会直接进入播放器）');
+    showDialog('已收藏', '点击收藏项可在App内打开（视频/直播链接会直接进入播放器）', [
+      { text: '知道了' },
+    ]);
   };
 
   const openFavorite = async (url: string | null) => {
@@ -149,13 +155,17 @@ export default function ProfileScreen() {
         (i): i is NonNullable<typeof i> => i !== null,
       );
       if (validQueue.length === 0) {
-        Alert.alert('暂不支持该链接', '目前仅支持视频、直播和 b23.tv 短链');
+        showDialog('暂不支持该链接', '目前仅支持视频、直播和 b23.tv 短链', [
+          { text: '知道了' },
+        ]);
         return;
       }
 
       const routed = await routeBilibiliUrl(url);
       if (!routed) {
-        Alert.alert('暂不支持该链接', '目前仅支持视频、直播和 b23.tv 短链');
+        showDialog('暂不支持该链接', '目前仅支持视频、直播和 b23.tv 短链', [
+          { text: '知道了' },
+        ]);
         return;
       }
       const index = validQueue.findIndex(
@@ -170,7 +180,9 @@ export default function ProfileScreen() {
         type: routed.type,
       });
     } catch {
-      Alert.alert('暂不支持该链接', '目前仅支持视频、直播和 b23.tv 短链');
+      showDialog('暂不支持该链接', '目前仅支持视频、直播和 b23.tv 短链', [
+        { text: '知道了' },
+      ]);
     }
   };
 
@@ -184,7 +196,7 @@ export default function ProfileScreen() {
   };
 
   const confirmDeleteFollow = (follow: { id: number; name: string | null; uid: string }) => {
-    Alert.alert('取消关注', `确定取消关注「${follow.name ?? follow.uid}」吗？`, [
+    showDialog('取消关注', `确定取消关注「${follow.name ?? follow.uid}」吗？`, [
       { text: '取消', style: 'cancel' },
       {
         text: '取消关注',
@@ -197,7 +209,7 @@ export default function ProfileScreen() {
   };
 
   const confirmDeleteFavorite = (favorite: { id: number; title: string | null; url: string | null }) => {
-    Alert.alert('删除收藏', `确定删除收藏「${favorite.title ?? favorite.url}」吗？`, [
+    showDialog('删除收藏', `确定删除收藏「${favorite.title ?? favorite.url}」吗？`, [
       { text: '取消', style: 'cancel' },
       {
         text: '删除',
@@ -309,7 +321,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0d1117',
+    backgroundColor: 'transparent',
     paddingHorizontal: 16,
   },
   title: {

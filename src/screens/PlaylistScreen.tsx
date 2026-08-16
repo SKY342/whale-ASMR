@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -23,6 +22,7 @@ import {
 } from '../db/schema';
 import type { Playlist } from '../db/schema';
 import { playerQueueStore, toQueueItem } from '../store/playerQueueStore';
+import { showDialog } from '../store/dialogStore';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 
 export default function PlaylistScreen() {
@@ -63,7 +63,7 @@ export default function PlaylistScreen() {
   };
 
   const confirmDeleteItem = (item: { id: number; title: string | null; bvid: string }) => {
-    Alert.alert('删除单曲', `确定从歌单中删除「${item.title ?? item.bvid}」吗？`, [
+    showDialog('删除单曲', `确定从歌单中删除「${item.title ?? item.bvid}」吗？`, [
       { text: '取消', style: 'cancel' },
       {
         text: '删除',
@@ -97,7 +97,7 @@ export default function PlaylistScreen() {
   };
 
   const confirmDelete = (playlist: Playlist) => {
-    Alert.alert('删除歌单', `确定删除「${playlist.name}」及其中的所有曲目吗？`, [
+    showDialog('删除歌单', `确定删除「${playlist.name}」及其中的所有曲目吗？`, [
       { text: '取消', style: 'cancel' },
       {
         text: '删除',
@@ -113,7 +113,7 @@ export default function PlaylistScreen() {
   };
 
   const showActions = (playlist: Playlist) => {
-    Alert.alert(playlist.name, '选择操作', [
+    showDialog(playlist.name, '选择操作', [
       { text: '重命名', onPress: () => { setRenaming(playlist); setRenameText(playlist.name); } },
       { text: '删除', style: 'destructive', onPress: () => confirmDelete(playlist) },
       { text: '取消', style: 'cancel' },
@@ -234,7 +234,7 @@ export default function PlaylistScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0d1117',
+    backgroundColor: 'transparent',
     paddingHorizontal: 16,
   },
   title: {
