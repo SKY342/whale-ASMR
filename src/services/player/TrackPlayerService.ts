@@ -26,6 +26,7 @@ export interface PlayableTrack {
   duration?: number;
   quality?: string;
   format?: string;
+  mid?: number;
 }
 
 export async function setupPlayer(): Promise<void> {
@@ -88,6 +89,7 @@ export async function playTrack(info: PlayableTrack): Promise<void> {
     duration: info.type === 'video' ? info.duration ?? 0 : 0,
     quality: info.quality,
     format: info.format,
+    mid: info.mid,
   });
   playerStore.getState().setPlaying(true);
 }

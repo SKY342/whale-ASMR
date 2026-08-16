@@ -5,12 +5,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import AudioPlayer from '../components/AudioPlayer';
-import { getSource } from '../services/sources';
 import type { SubtitleLine } from '../services/sources';
-import {
-  playTrack,
-  toPlayableTrack,
-} from '../services/player/TrackPlayerService';
+import { playQueueItem } from '../services/player/PlayerQueueService';
 import { fetchSubtitles } from '../services/subtitle/SubtitleService';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -34,16 +30,13 @@ export default function PlayerScreen() {
       setLoading(true);
       setError(null);
       try {
-        const source = getSource('bilibili');
-        if (!source) throw new Error('B站音源未注册');
-
-        const audio = await source.getAudioUrl(id, type);
-        const playable = toPlayableTrack(id, type, audio, {
-          title,
-          author,
-          artwork,
+        await playQueueItem({
+          id,
+          type,
+          title: title ?? (type === 'live' ? '直播' : 'B站音频'),
+          author: author ?? 'B站',
+          artwork: artwork ?? '',
         });
-        await playTrack(playable);
 
         if (type === 'video') {
           const subs = await fetchSubtitles(id, type);

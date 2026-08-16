@@ -2,6 +2,8 @@ import { getSource } from '../sources';
 import { playTrack, toPlayableTrack } from './TrackPlayerService';
 import { playerQueueStore } from '../../store/playerQueueStore';
 import type { QueueItem } from '../../store/playerQueueStore';
+import { playerStore } from '../../store/playerStore';
+import { getLiveRoomUpInfo, getVideoInfo } from '../../utils/bilibili-api';
 
 /**
  * 播放队列服务：负责按队列上下文解析音频并播放。
@@ -17,6 +19,9 @@ export async function playQueueItem(item: QueueItem): Promise<void> {
     artwork: item.artwork,
   });
   await playTrack(playable);
+
+  // 播放后异步补齐 UP主 mid，供播放器关注按钮使用
+  void enrichCurrentUpInfo(item);
 }
 
 export async function playNextInQueue(): Promise<boolean> {
@@ -31,4 +36,35 @@ export async function playPreviousInQueue(): Promise<boolean> {
   if (!item) return false;
   await playQueueItem(item);
   return true;
+}
+
+/** 拉取当前播放条目的 UP主信息并写入 playerStore。 */
+export async function enrichCurrentUpInfo(item: QueueItem): Promise<void> {
+  try {
+    let mid: number | undefined;
+    let name = item.author;
+    let face = item.artwork;
+    if (item.type === 'video') {
+      const info = await getVideoInfo(item.id);
+      mid = info.mid;
+      name = info.author;
+      face = info.coverUrl;
+    } else {
+      const up = await getLiveRoomUpInfo(item.id);
+      mid = up.mid;
+      name = up.name;
+      face = up.face;
+    }
+    const current = playerStore.getState().current;
+    if (current && current.id === item.id) {
+      playerStore.getState().setCurrent({
+        ...current,
+        mid,
+        author: name,
+        artwork: face || current.artwork,
+      });
+    }
+  } catch {
+    // 拿不到UP主信息时保持现状
+  }
 }

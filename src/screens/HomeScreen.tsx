@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   FlatList,
   Pressable,
-  RefreshControl,
   StyleSheet,
   Text,
   View,
@@ -38,6 +37,19 @@ const CATEGORIES = [
 const ZONES = [
   { title: '助眠专区', keyword: '助眠' },
   { title: '白噪声专区', keyword: '白噪声' },
+];
+
+const TAG_CLOUD = [
+  '雨声',
+  '篝火',
+  '森林',
+  '海浪',
+  '咖啡馆',
+  '图书馆',
+  '触发音',
+  '轻语',
+  '采耳',
+  '敲击音',
 ];
 
 export default function HomeScreen() {
@@ -157,9 +169,8 @@ export default function HomeScreen() {
         data={filtered}
         keyExtractor={(item) => `${item.type}_${item.id}`}
         contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor="#8b949e" />
-        }
+        refreshing={refreshing}
+        onRefresh={() => void refresh()}
         onEndReachedThreshold={0.3}
         onEndReached={() => void loadMore()}
         ListHeaderComponent={
@@ -195,6 +206,22 @@ export default function HomeScreen() {
                 >
                   <Text style={styles.zoneTitle}>{zone.title}</Text>
                   <Text style={styles.zoneMeta}>按「{zone.keyword}」聚合</Text>
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.tagCloud}>
+              {TAG_CLOUD.map((tag) => (
+                <Pressable
+                  key={tag}
+                  style={styles.tagChip}
+                  onPress={() =>
+                    stackNavigation?.navigate('SearchResults', {
+                      type: 'video',
+                      keyword: tag,
+                    })
+                  }
+                >
+                  <Text style={styles.tagChipText}>{tag}</Text>
                 </Pressable>
               ))}
             </View>
@@ -251,9 +278,9 @@ const styles = StyleSheet.create({
   },
   searchButton: {
     backgroundColor: '#1f6feb',
-    paddingHorizontal: 14,
-    height: 42,
-    borderRadius: 10,
+    paddingHorizontal: 18,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -312,6 +339,24 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.75)',
     fontSize: 12,
     marginTop: 4,
+  },
+  tagCloud: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  tagChip: {
+    backgroundColor: '#1a222b',
+    borderWidth: 1,
+    borderColor: '#2d3642',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  tagChipText: {
+    color: '#c9d1d9',
+    fontSize: 13,
   },
   hint: {
     color: '#8b949e',

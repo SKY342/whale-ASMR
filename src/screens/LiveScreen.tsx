@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   FlatList,
   Pressable,
-  RefreshControl,
   StyleSheet,
   Text,
   View,
@@ -108,9 +107,8 @@ export default function LiveScreen() {
         data={filtered}
         keyExtractor={(item) => `${item.type}_${item.id}`}
         contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor="#8b949e" />
-        }
+        refreshing={refreshing}
+        onRefresh={() => void refresh()}
         ListHeaderComponent={
           <Text style={styles.sectionTitle}>🔴 助眠/白噪声直播</Text>
         }
@@ -155,9 +153,9 @@ const styles = StyleSheet.create({
   },
   searchButton: {
     backgroundColor: '#1f6feb',
-    paddingHorizontal: 14,
-    height: 42,
-    borderRadius: 10,
+    paddingHorizontal: 18,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -14,6 +14,7 @@ import SearchBar from '../components/SearchBar';
 import CoverImage from '../components/CoverImage';
 import { searchLiveRooms, searchVideos } from '../utils/bilibili-api';
 import { filterByKeywords } from '../services/filter/KeywordFilter';
+import { getBlockedKeywords } from '../db/schema';
 import { settingsStore } from '../store/settingsStore';
 import { playerQueueStore, toQueueItem } from '../store/playerQueueStore';
 import type { RootStackParamList } from '../navigation/types';
@@ -37,11 +38,14 @@ export default function SearchResultsScreen() {
     setLoading(true);
     setError(null);
     try {
+      // 每次搜索前从数据库重新读取屏蔽词，确保刚添加的屏蔽词立即生效
+      const freshKeywords = await getBlockedKeywords();
+      settingsStore.getState().setBlockedKeywords(freshKeywords);
       const raw =
         type === 'live'
           ? await searchLiveRooms(target, 1)
           : await searchVideos(target, 1);
-      setResults(filterByKeywords(raw, blockedKeywords));
+      setResults(filterByKeywords(raw, freshKeywords));
     } catch (e) {
       setError(String((e as Error)?.message ?? e));
       setResults([]);
@@ -143,9 +147,9 @@ const styles = StyleSheet.create({
   },
   searchButton: {
     backgroundColor: '#1f6feb',
-    paddingHorizontal: 14,
-    height: 42,
-    borderRadius: 10,
+    paddingHorizontal: 18,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },

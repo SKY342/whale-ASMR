@@ -6,7 +6,8 @@ import { Linking } from 'react-native';
  */
 
 export function buildUpHomeUrl(mid: number | string): string {
-  return `https://space.bilibili.com/${mid}`;
+  // 统一指向UP主投稿列表页
+  return `https://space.bilibili.com/${mid}/upload/video`;
 }
 
 export function buildVideoUrl(bvid: string): string {

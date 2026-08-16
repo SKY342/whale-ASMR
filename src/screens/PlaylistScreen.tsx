@@ -16,6 +16,7 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import {
   createPlaylist,
   deletePlaylist,
+  deletePlaylistItem,
   getPlaylistItems,
   getPlaylists,
   renamePlaylist,
@@ -47,14 +48,33 @@ export default function PlaylistScreen() {
     refresh();
   }, []);
 
+  const loadItems = async (playlistId: number) => {
+    const list = await getPlaylistItems(playlistId);
+    setItems(list);
+  };
+
   const openPlaylist = async (playlist: Playlist) => {
     if (expandedId === playlist.id) {
       setExpandedId(null);
       return;
     }
     setExpandedId(playlist.id);
-    const list = await getPlaylistItems(playlist.id);
-    setItems(list);
+    await loadItems(playlist.id);
+  };
+
+  const confirmDeleteItem = (item: { id: number; title: string | null; bvid: string }) => {
+    Alert.alert('删除单曲', `确定从歌单中删除「${item.title ?? item.bvid}」吗？`, [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '删除',
+        style: 'destructive',
+        onPress: () => {
+          void deletePlaylistItem(item.id).then(() => {
+            if (expandedId != null) void loadItems(expandedId);
+          });
+        },
+      },
+    ]);
   };
 
   const addPlaylist = () => {
@@ -162,15 +182,19 @@ export default function PlaylistScreen() {
                   <Text style={styles.hint}>歌单为空</Text>
                 ) : (
                   items.map((child) => (
-                    <Pressable
-                      key={String(child.id)}
-                      style={styles.itemRow}
-                      onPress={() => playItem(child.bvid, child.title)}
-                    >
-                      <Text style={styles.itemText} numberOfLines={1}>
-                        🎵 {child.title || child.bvid}
-                      </Text>
-                    </Pressable>
+                    <View key={String(child.id)} style={styles.itemRow}>
+                      <Pressable style={styles.itemPress} onPress={() => playItem(child.bvid, child.title)}>
+                        <Text style={styles.itemText} numberOfLines={1}>
+                          🎵 {child.title || child.bvid}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        style={styles.itemDelete}
+                        onPress={() => confirmDeleteItem(child)}
+                      >
+                        <Text style={styles.itemDeleteText}>删除</Text>
+                      </Pressable>
+                    </View>
                   ))
                 )}
               </View>
@@ -273,13 +297,29 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   itemRow: {
-    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
     borderBottomWidth: 1,
     borderBottomColor: '#21262d',
+  },
+  itemPress: {
+    flex: 1,
+    paddingVertical: 6,
   },
   itemText: {
     color: '#c9d1d9',
     fontSize: 14,
+  },
+  itemDelete: {
+    backgroundColor: '#2d1515',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  itemDeleteText: {
+    color: '#ff7b72',
+    fontSize: 12,
   },
   hint: {
     color: '#8b949e',

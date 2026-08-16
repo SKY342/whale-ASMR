@@ -299,7 +299,7 @@ export default function ProfileScreen() {
         </Pressable>
         <Pressable style={styles.card}>
           <Text style={styles.cardTitle}>关于</Text>
-          <Text style={styles.cardMeta}>鲸鱼助眠 v0.4.0</Text>
+          <Text style={styles.cardMeta}>鲸鱼助眠 v0.4.1</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>

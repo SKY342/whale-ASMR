@@ -25,13 +25,17 @@ import { downloadAudio } from '../services/download/DownloadManager';
 import { findSubtitleLine } from '../services/subtitle/SubtitleService';
 import type { SubtitleLine } from '../services/sources';
 import {
+  addFollow,
   addPlayHistory,
   addPlaylistItem,
   createPlaylist,
+  getFollows,
   getPlaylists,
   hasPlaylistItem,
 } from '../db/schema';
 import type { Playlist } from '../db/schema';
+import { getUpInfo } from '../utils/bilibili-api';
+import { buildUpHomeUrl } from '../utils/bili-router';
 import CoverImage from './CoverImage';
 import ControlButton from './ControlButton';
 import SleepTimer from './SleepTimer';
@@ -59,6 +63,8 @@ export default function AudioPlayer({ subtitles }: Props) {
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [isFollowed, setIsFollowed] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
 
   const isLive = current?.type === 'live';
   const duration = current?.duration ?? 0;
@@ -67,6 +73,24 @@ export default function AudioPlayer({ subtitles }: Props) {
     const line = findSubtitleLine(subtitles, progressSeconds);
     setSubtitleText(line?.text ?? null);
   }, [progressSeconds, subtitles]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!current?.mid) {
+      setIsFollowed(false);
+      return;
+    }
+    void getFollows()
+      .then((list) => {
+        if (!cancelled) {
+          setIsFollowed(list.some((f) => f.uid === String(current.mid)));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [current?.id, current?.mid]);
 
   if (!current) {
     return (
@@ -139,6 +163,26 @@ export default function AudioPlayer({ subtitles }: Props) {
     }
   };
 
+  const handleFollow = async () => {
+    if (!current?.mid || followLoading) return;
+    setFollowLoading(true);
+    try {
+      const up = await getUpInfo(current.mid);
+      await addFollow({
+        uid: String(up.mid),
+        name: up.name,
+        avatarUrl: up.face,
+        homeUrl: buildUpHomeUrl(up.mid),
+      });
+      setIsFollowed(true);
+      Alert.alert('已关注', `已关注 UP主 ${up.name}`);
+    } catch (error) {
+      Alert.alert('关注失败', String((error as Error)?.message ?? error));
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
   const createAndAdd = async () => {
     if (!current) return;
     const name = newPlaylistName.trim();
@@ -175,10 +219,24 @@ export default function AudioPlayer({ subtitles }: Props) {
       <Text style={styles.title} numberOfLines={2}>
         {current.title}
       </Text>
-      <Text style={styles.author}>
-        {isLive ? '🔴 直播中' : current.author}
-        {current.quality ? ` · 音质 ${current.quality}` : ''}
-      </Text>
+      <View style={styles.authorRow}>
+        <Text style={styles.author}>
+          {isLive ? '🔴 直播中 · ' : ''}
+          {current.author}
+          {current.quality ? ` · 音质 ${current.quality}` : ''}
+        </Text>
+        {current.mid ? (
+          <Pressable
+            style={[styles.followButton, isFollowed && styles.followButtonActive]}
+            onPress={() => void handleFollow()}
+            disabled={isFollowed || followLoading}
+          >
+            <Text style={[styles.followButtonText, isFollowed && styles.followButtonTextActive]}>
+              {followLoading ? '关注中...' : isFollowed ? '已关注' : '+ 关注'}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
 
       {!isLive ? (
         <View style={styles.progressSection}>
@@ -337,10 +395,32 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
+  authorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 6,
+  },
   author: {
     color: '#8b949e',
     fontSize: 14,
-    marginTop: 6,
+  },
+  followButton: {
+    backgroundColor: '#1f6feb',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  followButtonActive: {
+    backgroundColor: '#21262d',
+  },
+  followButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  followButtonTextActive: {
+    color: '#8b949e',
   },
   progressSection: {
     width: '100%',

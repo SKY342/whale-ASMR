@@ -15,7 +15,7 @@ interface Props {
 
 export default function SearchBar({
   value,
-  placeholder = '搜索ASMR/白噪声...',
+  placeholder = '搜索助眠音频、ASMR...',
   onChangeText,
   onSubmit,
   onPress,
@@ -24,7 +24,7 @@ export default function SearchBar({
   if (onPress) {
     return (
       <Pressable style={styles.container} onPress={onPress}>
-        <MaterialCommunityIcons name="magnify" size={20} color="#8b949e" />
+        <MaterialCommunityIcons name="magnify" size={20} color="#8b98a5" />
         <Text style={styles.placeholderText} numberOfLines={1}>
           {placeholder}
         </Text>
@@ -34,17 +34,20 @@ export default function SearchBar({
 
   return (
     <View style={styles.container}>
-      <MaterialCommunityIcons name="magnify" size={20} color="#8b949e" />
+      <MaterialCommunityIcons name="magnify" size={20} color="#8b98a5" />
       <TextInput
         style={styles.input}
         value={value}
         placeholder={placeholder}
-        placeholderTextColor="#8b949e"
+        placeholderTextColor="#8b98a5"
         onChangeText={onChangeText}
         onSubmitEditing={onSubmit}
         returnKeyType="search"
         autoCorrect={false}
         autoFocus={autoFocus}
+        editable
+        selectionColor="#58a6ff"
+        keyboardAppearance="dark"
       />
     </View>
   );
@@ -54,21 +57,21 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#161b22',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    height: 42,
+    backgroundColor: '#242d38',
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    height: 44,
     gap: 8,
   },
   input: {
     flex: 1,
-    color: '#e6edf3',
+    color: '#ffffff',
     fontSize: 15,
     paddingVertical: 0,
   },
   placeholderText: {
     flex: 1,
-    color: '#8b949e',
+    color: '#8b98a5',
     fontSize: 15,
   },
 });

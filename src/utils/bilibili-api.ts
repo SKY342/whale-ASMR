@@ -201,6 +201,24 @@ export async function getUpInfo(mid: number | string): Promise<UpInfo> {
   };
 }
 
+/** 通过直播间获取UP主信息（直播场景的关注按钮需要）。 */
+export async function getLiveRoomUpInfo(roomId: number | string): Promise<UpInfo> {
+  await ensureBuvid3();
+  const roomRes = await axios.get(
+    'https://api.live.bilibili.com/room/v1/Room/get_info',
+    {
+      params: { room_id: roomId },
+      headers: headers(`https://live.bilibili.com/${roomId}`),
+      timeout: 10000,
+    },
+  );
+  const uid = Number(roomRes.data?.data?.uid);
+  if (!uid) {
+    throw new Error(`获取直播间UP主失败: ${roomRes.data?.message ?? roomId}`);
+  }
+  return getUpInfo(uid);
+}
+
 // ---------- 视频信息 ----------
 
 export async function getVideoInfo(bvid: string): Promise<VideoInfo> {

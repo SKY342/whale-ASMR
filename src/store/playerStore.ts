@@ -9,6 +9,8 @@ export interface CurrentTrackInfo {
   duration: number;
   quality?: string;
   format?: string;
+  /** UP主 mid，用于播放器关注按钮。 */
+  mid?: number;
 }
 
 interface PlayerState {

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useNavigationState } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { playerStore } from '../store/playerStore';
 import { togglePlay } from '../services/player/TrackPlayerService';
@@ -15,8 +16,12 @@ export default function MiniPlayer() {
   const insets = useSafeAreaInsets();
   const current = playerStore((s) => s.current);
   const isPlaying = playerStore((s) => s.isPlaying);
+  // 播放详情页不显示悬浮窗，避免与播放器按钮重叠
+  const currentRouteName = useNavigationState(
+    (state) => state?.routes[state.index]?.name,
+  );
 
-  if (!current) return null;
+  if (!current || currentRouteName === 'Player') return null;
 
   return (
     <View style={[styles.container, { bottom: insets.bottom + 58 }]}>

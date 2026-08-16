@@ -158,6 +158,10 @@ export async function deletePlaylist(id: number): Promise<void> {
   await db.runAsync('DELETE FROM playlists WHERE id = ?', [id]);
 }
 
+export async function deletePlaylistItem(id: number): Promise<void> {
+  await db.runAsync('DELETE FROM playlist_items WHERE id = ?', [id]);
+}
+
 export async function getPlaylistItems(playlistId: number): Promise<PlaylistItem[]> {
   const rows = await db.getAllAsync<any>(
     `SELECT id, playlist_id, bvid, title, cover_url, audio_url, duration
