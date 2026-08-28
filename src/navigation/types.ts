@@ -19,6 +19,11 @@ export type RootStackParamList = {
     upName: string;
   };
   Diagnostics: undefined;
+  ThemeSelector: undefined;
+  History: undefined;
+  SearchHistory: undefined;
+  Follows: undefined;
+  Favorites: undefined;
 };
 
 export type MainTabParamList = {

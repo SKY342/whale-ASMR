@@ -78,6 +78,35 @@ export async function initDatabase(): Promise<void> {
       ttl_ms INTEGER NOT NULL DEFAULT 7200000,
       updated_at INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      item_id TEXT NOT NULL,
+      item_type TEXT NOT NULL,
+      title TEXT,
+      author TEXT,
+      cover_url TEXT,
+      duration INTEGER,
+      play_count TEXT,
+      viewed_at INTEGER NOT NULL,
+      UNIQUE (item_id, item_type)
+    );
+
+    CREATE TABLE IF NOT EXISTS search_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      keyword TEXT NOT NULL,
+      searched_at INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_follows_uid ON follows(uid);
+    CREATE INDEX IF NOT EXISTS idx_history_viewed_at ON history(viewed_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_history_type ON history(item_type);
+    CREATE INDEX IF NOT EXISTS idx_search_history_time ON search_history(searched_at DESC);
   `);
 }
 

@@ -16,6 +16,8 @@ export interface SearchResult {
   duration?: number;
   playCount?: string;
   description?: string;
+  /** B站标签（搜索接口若返回则填入）。 */
+  tags?: string[];
 }
 
 export interface AudioSourceInfo {

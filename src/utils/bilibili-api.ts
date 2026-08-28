@@ -140,6 +140,7 @@ export async function searchVideos(
       duration: parseDuration(item.duration),
       playCount: String(item.play ?? ''),
       description: String(item.description ?? '').replace(/<[^>]+>/g, ''),
+      tags: parseTags(item.tag),
     }));
 }
 
@@ -171,6 +172,7 @@ export async function searchLiveRooms(
       coverUrl: normalizeUrl(item.cover ?? item.user_cover ?? ''),
       playCount: item.online != null ? `${item.online}人在线` : undefined,
       description: String(item.area_name ?? ''),
+      tags: parseTags(item.tag),
     }));
 }
 
@@ -333,10 +335,11 @@ export async function getUserVideos(
     // 忽略，走搜索兜底
   }
 
-  // 兜底：搜索 UP主名称，并优先保留作者名完全匹配的结果
+  // 兜底：搜索 UP主名称，仅返回作者完全匹配的结果；没有匹配则返回空，
+  // 绝不返回无关视频，避免“我的关注”里出现别的 UP 主内容。
   const results = await searchVideos(upName);
   const exact = results.filter((r) => r.author === upName);
-  return exact.length > 0 ? exact : results.slice(0, 30);
+  return exact;
 }
 
 // ---------- 直播 ----------
@@ -492,4 +495,12 @@ function parseDuration(value: unknown): number | undefined {
     return Number.isNaN(num) ? undefined : num;
   }
   return undefined;
+}
+
+function parseTags(value: unknown): string[] | undefined {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  return value
+    .split(/[,，、\s]+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
 }

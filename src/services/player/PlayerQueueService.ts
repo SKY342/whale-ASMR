@@ -4,6 +4,7 @@ import { playerQueueStore } from '../../store/playerQueueStore';
 import type { QueueItem } from '../../store/playerQueueStore';
 import { playerStore } from '../../store/playerStore';
 import { getLiveRoomUpInfo, getVideoInfo } from '../../utils/bilibili-api';
+import { addHistory } from '../historyService';
 
 /**
  * 播放队列服务：负责按队列上下文解析音频并播放。
@@ -19,6 +20,16 @@ export async function playQueueItem(item: QueueItem): Promise<void> {
     artwork: item.artwork,
   });
   await playTrack(playable);
+
+  // 播放成功后异步写入历史（失败静默）
+  void addHistory({
+    id: item.id,
+    type: item.type,
+    title: item.title,
+    author: item.author,
+    coverUrl: item.artwork,
+    duration: item.duration,
+  }).catch(() => {});
 
   // 播放后异步补齐 UP主 mid，供播放器关注按钮使用
   void enrichCurrentUpInfo(item);

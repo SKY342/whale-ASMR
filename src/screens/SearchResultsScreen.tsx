@@ -14,7 +14,8 @@ import SearchBar from '../components/SearchBar';
 import CoverImage from '../components/CoverImage';
 import { searchLiveRooms, searchVideos } from '../utils/bilibili-api';
 import { filterByKeywords } from '../services/filter/KeywordFilter';
-import { getBlockedKeywords } from '../db/schema';
+import { getBlockedKeywords, getFollows } from '../db/schema';
+import { addSearchHistory } from '../services/searchHistoryService';
 import { settingsStore } from '../store/settingsStore';
 import { playerQueueStore, toQueueItem } from '../store/playerQueueStore';
 import type { RootStackParamList } from '../navigation/types';
@@ -45,7 +46,21 @@ export default function SearchResultsScreen() {
         type === 'live'
           ? await searchLiveRooms(target, 1)
           : await searchVideos(target, 1);
-      setResults(filterByKeywords(raw, freshKeywords));
+      const filtered = filterByKeywords(raw, freshKeywords);
+      if (type === 'live') {
+        // 关注的UP主直播优先展示
+        const follows = await getFollows();
+        const followedNames = new Set(
+          follows.map((f) => f.name?.trim()).filter(Boolean),
+        );
+        filtered.sort(
+          (a, b) =>
+            Number(followedNames.has(b.author)) -
+            Number(followedNames.has(a.author)),
+        );
+      }
+      setResults(filtered);
+      void addSearchHistory(target).catch(() => {});
     } catch (e) {
       setError(String((e as Error)?.message ?? e));
       setResults([]);

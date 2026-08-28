@@ -1,24 +1,28 @@
 import React from 'react';
 import { Image, StyleSheet, View } from 'react-native';
-import WHALE_GIRL_IMAGE from '../../example_photo/鲸鱼娘竖屏图片.jpg';
+import { useTheme } from '../themes/ThemeContext';
 
 interface Props {
   children: React.ReactNode;
 }
 
 /**
- * 全局页面背景：鲸鱼娘竖屏图（低透明度）+ 主色 #313A7D。
+ * 全局页面背景：根据当前主题渲染主色与可选背景图。
  * 所有页面容器需使用透明背景才能透出该层。
  */
 export default function GlobalBackground({ children }: Props) {
+  const { colors } = useTheme();
+
   return (
-    <View style={styles.root}>
-      <Image
-        source={WHALE_GIRL_IMAGE}
-        style={styles.image}
-        resizeMode="cover"
-        fadeDuration={0}
-      />
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      {colors.backgroundImage ? (
+        <Image
+          source={colors.backgroundImage}
+          style={[styles.image, { opacity: colors.backgroundImageOpacity ?? 0.6 }]}
+          resizeMode="cover"
+          fadeDuration={0}
+        />
+      ) : null}
       <View style={styles.content}>{children}</View>
     </View>
   );
@@ -27,13 +31,11 @@ export default function GlobalBackground({ children }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#313A7D',
   },
   image: {
     ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
-    opacity: 0.26,
   },
   content: {
     flex: 1,

@@ -11,4 +11,17 @@
 -keep class com.swmansion.reanimated.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
 
-# Add any project specific keep options here:
+# React Native
+-keep class com.facebook.react.** { *; }
+-keep class com.facebook.hermes.** { *; }
+-keep class com.facebook.jni.** { *; }
+
+# expo-sqlite
+-keep class expo.modules.sqlite.** { *; }
+
+# react-native-track-player
+-keep class com.doublesymmetry.trackplayer.** { *; }
+
+# 通用
+-keepattributes Signature
+-keepattributes *Annotation*
