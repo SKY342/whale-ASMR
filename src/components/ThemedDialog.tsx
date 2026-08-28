@@ -1,12 +1,14 @@
 import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { dialogStore } from '../store/dialogStore';
+import { useTheme } from '../themes/ThemeContext';
 
 /**
  * 自定义主题弹窗：替代系统白色 Alert。
- * 背景色比全局主色 #313A7D 更深一点。
+ * 背景色跟随主题（比主色更深一点）。
  */
 export default function ThemedDialog() {
+  const { colors } = useTheme();
   const { visible, title, message, buttons, close } = dialogStore();
 
   if (!visible) return null;
@@ -19,9 +21,13 @@ export default function ThemedDialog() {
   return (
     <Modal visible transparent animationType="fade" onRequestClose={close}>
       <View style={styles.mask}>
-        <View style={styles.box}>
-          <Text style={styles.title}>{title}</Text>
-          {message ? <Text style={styles.message}>{message}</Text> : null}
+        <View style={[styles.box, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+          {message ? (
+            <Text style={[styles.message, { color: colors.textSecondary }]}>
+              {message}
+            </Text>
+          ) : null}
           <View style={styles.buttons}>
             {buttons.map((button, index) => (
               <Pressable
@@ -32,6 +38,7 @@ export default function ThemedDialog() {
                 <Text
                   style={[
                     styles.buttonText,
+                    { color: colors.primary },
                     button.style === 'destructive' && styles.destructive,
                     button.style === 'cancel' && styles.cancel,
                   ]}

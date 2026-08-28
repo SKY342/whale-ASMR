@@ -14,7 +14,7 @@ import SearchBar from '../components/SearchBar';
 import CoverImage from '../components/CoverImage';
 import { searchLiveRooms } from '../utils/bilibili-api';
 import { filterByKeywords } from '../services/filter/KeywordFilter';
-import { getBlockedKeywords } from '../db/schema';
+import { getBlockedKeywords, getFollows } from '../db/schema';
 import { settingsStore } from '../store/settingsStore';
 import { playerQueueStore, toQueueItem } from '../store/playerQueueStore';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
@@ -50,7 +50,18 @@ export default function LiveScreen() {
         }
         if (merged.size >= 30) break;
       }
-      setItems(Array.from(merged.values()));
+      const list = Array.from(merged.values());
+      // 关注的UP主正在直播时置顶（有就放，没有就不放）
+      const follows = await getFollows();
+      const followedNames = new Set(
+        follows.map((f) => f.name?.trim()).filter(Boolean),
+      );
+      list.sort(
+        (a, b) =>
+          Number(followedNames.has(b.author)) -
+          Number(followedNames.has(a.author)),
+      );
+      setItems(list);
       const keywords = await getBlockedKeywords();
       settingsStore.getState().setBlockedKeywords(keywords);
     } catch (e) {

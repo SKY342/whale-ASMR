@@ -17,6 +17,8 @@ export interface KeywordRule {
 export interface FilterableItem {
   title: string;
   description?: string;
+  author?: string;
+  tags?: string[];
 }
 
 export function filterByKeywords<T extends FilterableItem>(
@@ -37,7 +39,14 @@ export function filterByKeywords<T extends FilterableItem>(
   if (blacklist.length === 0 && whitelist.length === 0) return items;
 
   return items.filter((item) => {
-    const text = `${item.title ?? ''} ${item.description ?? ''}`.toLowerCase();
+    const text = [
+      item.title ?? '',
+      item.description ?? '',
+      item.author ?? '',
+      (item.tags ?? []).join(' '),
+    ]
+      .join(' ')
+      .toLowerCase();
 
     if (blacklist.some((keyword) => text.includes(keyword))) {
       return false;

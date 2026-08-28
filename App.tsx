@@ -18,9 +18,15 @@ import DownloadScreen from './src/screens/DownloadScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import UpVideosScreen from './src/screens/UpVideosScreen';
 import DiagnosticsScreen from './src/screens/DiagnosticsScreen';
+import ThemeSelectorScreen from './src/screens/ThemeSelectorScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
+import SearchHistoryScreen from './src/screens/SearchHistoryScreen';
+import FollowsScreen from './src/screens/FollowsScreen';
+import FavoritesScreen from './src/screens/FavoritesScreen';
 import MiniPlayer from './src/components/MiniPlayer';
 import GlobalBackground from './src/components/GlobalBackground';
 import ThemedDialog from './src/components/ThemedDialog';
+import { ThemeProvider, useTheme } from './src/themes/ThemeContext';
 import { initDatabase, getBlockedKeywords } from './src/db/schema';
 import {
   attachPlayerListeners,
@@ -34,16 +40,17 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
 
 function MainTabs() {
+  const { colors } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#262B5C',
-          borderTopColor: '#3a4287',
+          backgroundColor: colors.tabBar,
+          borderTopColor: colors.border,
         },
-        tabBarActiveTintColor: '#58a6ff',
-        tabBarInactiveTintColor: '#8b949e',
+        tabBarActiveTintColor: colors.tabBarActive,
+        tabBarInactiveTintColor: colors.tabBarInactive,
         tabBarIcon: ({ color, size }) => {
           const icons: Record<string, string> = {
             Home: 'video-vintage',
@@ -69,7 +76,9 @@ function MainTabs() {
   );
 }
 
-export default function App() {
+function AppInner() {
+  const { colors } = useTheme();
+
   useEffect(() => {
     void (async () => {
       await initDatabase();
@@ -98,15 +107,28 @@ export default function App() {
                 <Stack.Screen name="Settings" component={SettingsScreen} />
                 <Stack.Screen name="UpVideos" component={UpVideosScreen} />
                 <Stack.Screen name="Diagnostics" component={DiagnosticsScreen} />
+                <Stack.Screen name="ThemeSelector" component={ThemeSelectorScreen} />
+                <Stack.Screen name="History" component={HistoryScreen} />
+                <Stack.Screen name="SearchHistory" component={SearchHistoryScreen} />
+                <Stack.Screen name="Follows" component={FollowsScreen} />
+                <Stack.Screen name="Favorites" component={FavoritesScreen} />
               </Stack.Navigator>
               <MiniPlayer />
             </View>
           </NavigationContainer>
         </GlobalBackground>
         <ThemedDialog />
-        <StatusBar style="light" />
+        <StatusBar style={colors.statusBar} />
       </PaperProvider>
     </SafeAreaProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppInner />
+    </ThemeProvider>
   );
 }
 

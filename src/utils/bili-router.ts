@@ -10,6 +10,12 @@ export function buildUpHomeUrl(mid: number | string): string {
   return `https://space.bilibili.com/${mid}/upload/video`;
 }
 
+const SPACE_UPLOAD_RE = /^https:\/\/space\.bilibili\.com\/\d+\/upload\/video\/?$/;
+
+export function isValidUpHomeUrl(url: string | null): boolean {
+  return !!url && SPACE_UPLOAD_RE.test(url);
+}
+
 export function buildVideoUrl(bvid: string): string {
   return `https://www.bilibili.com/video/${bvid}`;
 }
