@@ -21,6 +21,8 @@ import { playerQueueStore, toQueueItem } from '../store/playerQueueStore';
 import type { RootStackParamList } from '../navigation/types';
 import type { SearchResult } from '../services/sources';
 
+const PAGE_SIZE = 20;
+
 export default function SearchResultsScreen() {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'SearchResults'>>();
@@ -29,41 +31,59 @@ export default function SearchResultsScreen() {
   const [keyword, setKeyword] = useState(initialKeyword ?? '');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const blockedKeywords = settingsStore((s) => s.blockedKeywords);
+
+  const fetchPage = async (target: string, pageNum: number): Promise<SearchResult[]> => {
+    const freshKeywords = await getBlockedKeywords();
+    settingsStore.getState().setBlockedKeywords(freshKeywords);
+    const raw =
+      type === 'live'
+        ? await searchLiveRooms(target, pageNum)
+        : await searchVideos(target, pageNum);
+    const filtered = filterByKeywords(raw, freshKeywords);
+    if (type === 'live') {
+      // 关注的UP主直播优先展示（每页都置顶排序，追加时再整体排序）
+      const follows = await getFollows();
+      const followedNames = new Set(
+        follows.map((f) => f.name?.trim()).filter(Boolean),
+      );
+      filtered.sort(
+        (a, b) =>
+          Number(followedNames.has(b.author)) -
+          Number(followedNames.has(a.author)),
+      );
+    }
+    return filtered;
+  };
+
+  const appendUnique = (prev: SearchResult[], added: SearchResult[]) => {
+    const seen = new Set(prev.map((i) => `${i.type}:${i.id}`));
+    return [...prev, ...added.filter((i) => !seen.has(`${i.type}:${i.id}`))];
+  };
 
   const doSearch = async (kw?: string) => {
     const target = (kw ?? keyword).trim();
     if (!target) return;
     setKeyword(target);
     setLoading(true);
+    setLoadingMore(false);
     setError(null);
+    setResults([]);
+    setPage(1);
+    setHasMore(true);
     try {
-      // 每次搜索前从数据库重新读取屏蔽词，确保刚添加的屏蔽词立即生效
-      const freshKeywords = await getBlockedKeywords();
-      settingsStore.getState().setBlockedKeywords(freshKeywords);
-      const raw =
-        type === 'live'
-          ? await searchLiveRooms(target, 1)
-          : await searchVideos(target, 1);
-      const filtered = filterByKeywords(raw, freshKeywords);
-      if (type === 'live') {
-        // 关注的UP主直播优先展示
-        const follows = await getFollows();
-        const followedNames = new Set(
-          follows.map((f) => f.name?.trim()).filter(Boolean),
-        );
-        filtered.sort(
-          (a, b) =>
-            Number(followedNames.has(b.author)) -
-            Number(followedNames.has(a.author)),
-        );
-      }
-      setResults(filtered);
+      const first = await fetchPage(target, 1);
+      setResults(first);
+      setHasMore(first.length >= PAGE_SIZE);
       void addSearchHistory(target).catch(() => {});
     } catch (e) {
       setError(String((e as Error)?.message ?? e));
       setResults([]);
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
@@ -75,6 +95,22 @@ export default function SearchResultsScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialKeyword, type]);
+
+  const loadMore = async () => {
+    if (loadingMore || loading || !hasMore || !keyword.trim()) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const more = await fetchPage(keyword, nextPage);
+      setResults((prev) => appendUnique(prev, more));
+      setPage(nextPage);
+      setHasMore(more.length >= PAGE_SIZE);
+    } catch {
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const openPlayer = (item: SearchResult) => {
     const index = results.findIndex((i) => i.id === item.id);
@@ -119,6 +155,15 @@ export default function SearchResultsScreen() {
           keyExtractor={(item) => `${item.type}_${item.id}`}
           contentContainerStyle={styles.list}
           keyboardShouldPersistTaps="handled"
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            loadingMore ? (
+              <Text style={styles.hint}>加载中...</Text>
+            ) : results.length > 0 && !hasMore ? (
+              <Text style={styles.hint}>没有更多了</Text>
+            ) : null
+          }
           renderItem={({ item }) => (
             <Pressable style={styles.card} onPress={() => openPlayer(item)}>
               <CoverImage uri={item.coverUrl} size={64} />
