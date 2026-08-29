@@ -39,12 +39,23 @@ import type { MainTabParamList, RootStackParamList } from './src/navigation/type
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
 
+// 关键：让导航器内部场景背景透明，才能透出 GlobalBackground 的主题背景/鲸鱼娘图
+const navTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: 'transparent',
+    card: 'transparent',
+  },
+};
+
 function MainTabs() {
   const { colors } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        sceneStyle: { backgroundColor: 'transparent' },
         tabBarStyle: {
           backgroundColor: colors.tabBar,
           borderTopColor: colors.border,
@@ -97,9 +108,14 @@ function AppInner() {
     <SafeAreaProvider>
       <PaperProvider theme={MD3DarkTheme}>
         <GlobalBackground>
-          <NavigationContainer ref={navigationRef} theme={DarkTheme}>
+          <NavigationContainer ref={navigationRef} theme={navTheme}>
             <View style={styles.root}>
-              <Stack.Navigator screenOptions={{ headerShown: false }}>
+              <Stack.Navigator
+                screenOptions={{
+                  headerShown: false,
+                  cardStyle: { backgroundColor: 'transparent' },
+                }}
+              >
                 <Stack.Screen name="MainTabs" component={MainTabs} />
                 <Stack.Screen name="Player" component={PlayerScreen} />
                 <Stack.Screen name="SearchResults" component={SearchResultsScreen} />

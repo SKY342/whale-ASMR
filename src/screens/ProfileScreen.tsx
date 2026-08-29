@@ -54,7 +54,7 @@ export default function ProfileScreen() {
           <Text style={styles.cardIcon}>🐳</Text>
           <View style={styles.cardInfo}>
             <Text style={styles.cardTitle}>关于</Text>
-            <Text style={styles.cardMeta}>鲸鱼助眠 v0.45.0</Text>
+            <Text style={styles.cardMeta}>鲸鱼助眠 v0.45.1</Text>
           </View>
         </Pressable>
       </ScrollView>
