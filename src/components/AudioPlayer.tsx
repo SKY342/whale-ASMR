@@ -55,6 +55,8 @@ export default function AudioPlayer({ subtitles }: Props) {
   const current = playerStore((s) => s.current);
   const isPlaying = playerStore((s) => s.isPlaying);
   const progressSeconds = playerStore((s) => s.progressSeconds);
+  const playMode = playerStore((s) => s.playMode);
+  const setPlayMode = playerStore((s) => s.setPlayMode);
 
   const [speedVisible, setSpeedVisible] = useState(false);
   const [rate, setRateState] = useState(1.0);
@@ -301,6 +303,14 @@ export default function AudioPlayer({ subtitles }: Props) {
           icon="skip-next"
           size={38}
           onPress={() => void playNextInQueue().catch(() => {})}
+        />
+        <ControlButton
+          icon={playMode === 'loop-one' ? 'repeat-once' : 'repeat'}
+          size={26}
+          color={playMode === 'loop-one' ? '#58a6ff' : '#8b949e'}
+          onPress={() =>
+            setPlayMode(playMode === 'loop-one' ? 'sequence' : 'loop-one')
+          }
         />
       </View>
 

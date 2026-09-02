@@ -32,6 +32,7 @@ import {
   attachPlayerListeners,
   setupPlayer,
 } from './src/services/player/TrackPlayerService';
+import { registerEndedHandler } from './src/services/player/PlayerQueueService';
 import { settingsStore } from './src/store/settingsStore';
 import { navigationRef } from './src/navigation/navigationRef';
 import type { MainTabParamList, RootStackParamList } from './src/navigation/types';
@@ -98,7 +99,10 @@ function AppInner() {
     })();
 
     void setupPlayer()
-      .then(() => attachPlayerListeners())
+      .then(() => {
+        attachPlayerListeners();
+        registerEndedHandler();
+      })
       .catch(() => {
         // 播放器初始化失败不阻塞 UI；进入播放页时会再次尝试
       });

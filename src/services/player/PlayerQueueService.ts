@@ -1,5 +1,6 @@
+import TrackPlayer from 'react-native-track-player';
 import { getSource } from '../sources';
-import { playTrack, toPlayableTrack } from './TrackPlayerService';
+import { playTrack, setEndedHandler, toPlayableTrack } from './TrackPlayerService';
 import { playerQueueStore } from '../../store/playerQueueStore';
 import type { QueueItem } from '../../store/playerQueueStore';
 import { playerStore } from '../../store/playerStore';
@@ -47,6 +48,33 @@ export async function playPreviousInQueue(): Promise<boolean> {
   if (!item) return false;
   await playQueueItem(item);
   return true;
+}
+
+/** 播放结束处理：单曲循环 seek0 重播；顺序模式切到队列下一个（末尾循环）。 */
+export async function handlePlaybackEnded(): Promise<void> {
+  const mode = playerStore.getState().playMode;
+  if (mode === 'loop-one') {
+    try {
+      await TrackPlayer.seekTo(0);
+      await TrackPlayer.play();
+    } catch {
+      // ignore
+    }
+    return;
+  }
+
+  const { items, index, source } = playerQueueStore.getState();
+  if (items.length === 0) return;
+  const nextIndex = (index + 1) % items.length;
+  playerQueueStore.getState().setQueue(items, nextIndex, source);
+  await playQueueItem(items[nextIndex]);
+}
+
+/** 注册“播放结束 → 自动连播”回调（由 App 在播放器初始化后调用）。 */
+export function registerEndedHandler(): void {
+  setEndedHandler(() => {
+    void handlePlaybackEnded();
+  });
 }
 
 /** 拉取当前播放条目的 UP主信息并写入 playerStore。 */

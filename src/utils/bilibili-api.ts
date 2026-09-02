@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { signWbiParams } from './wbi-sign';
 import { db } from '../db/schema';
+import { shuffleArray } from './array-utils';
 
 /**
  * B站公开接口封装。
@@ -30,6 +31,8 @@ function headers(referer: string): Record<string, string> {
   return {
     ...COMMON_HEADERS,
     Referer: referer,
+    Origin: 'https://www.bilibili.com',
+    Accept: 'application/json, text/plain, */*',
     ...(cookie ? { Cookie: cookie } : {}),
   };
 }
@@ -471,7 +474,7 @@ export async function getHomeRecommendations(): Promise<BiliSearchResult[]> {
     if (merged.size >= 20) break;
   }
 
-  return Array.from(merged.values()).slice(0, 30);
+  return shuffleArray(Array.from(merged.values())).slice(0, 30);
 }
 
 // ---------- 工具 ----------

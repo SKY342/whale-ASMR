@@ -16,6 +16,12 @@ import type { AudioSourceInfo } from '../sources';
  * - Android Foreground Service / iOS Background Audio
  */
 
+// 由 PlayerQueueService 注册的“播放结束”回调，避免模块循环依赖。
+let endedHandler: (() => void) | null = null;
+export function setEndedHandler(handler: (() => void) | null): void {
+  endedHandler = handler;
+}
+
 export interface PlayableTrack {
   id: string;
   type: 'video' | 'live';
@@ -162,6 +168,10 @@ export function attachPlayerListeners(): void {
   TrackPlayer.addEventListener(Event.PlaybackState, (data) => {
     const playing = data.state === State.Playing || data.state === State.Buffering;
     playerStore.getState().setPlaying(playing);
+    // 播放结束后触发自动连播/单曲循环（由 PlayerQueueService 注册）
+    if (data.state === State.Ended && endedHandler) {
+      endedHandler();
+    }
   });
 }
 

@@ -13,6 +13,7 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import SearchBar from '../components/SearchBar';
 import CoverImage from '../components/CoverImage';
 import { getHomeRecommendations, searchVideos } from '../utils/bilibili-api';
+import { shuffleArray } from '../utils/array-utils';
 import { filterByKeywords } from '../services/filter/KeywordFilter';
 import { getBlockedKeywords, getPlayHistory } from '../db/schema';
 import { settingsStore } from '../store/settingsStore';
@@ -86,7 +87,7 @@ export default function HomeScreen() {
     try {
       const keywordForLoad = category === '全部' ? null : category;
       const list = keywordForLoad
-        ? await searchVideos(keywordForLoad, 1)
+        ? shuffleArray(await searchVideos(keywordForLoad, 1))
         : await getHomeRecommendations();
       setItems(list);
       setPage(1);

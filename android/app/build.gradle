@@ -114,8 +114,8 @@ android {
         applicationId 'com.asmr.biliplayer'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 46
-        versionName "0.45.1"
+        versionCode 49
+        versionName "0.49.0"
     }
     signingConfigs {
         debug {
