@@ -304,17 +304,18 @@ export default function AudioPlayer({ subtitles }: Props) {
           size={38}
           onPress={() => void playNextInQueue().catch(() => {})}
         />
-        <ControlButton
-          icon={playMode === 'loop-one' ? 'repeat-once' : 'repeat'}
-          size={26}
-          color={playMode === 'loop-one' ? '#58a6ff' : '#8b949e'}
-          onPress={() =>
-            setPlayMode(playMode === 'loop-one' ? 'sequence' : 'loop-one')
-          }
-        />
       </View>
 
       <View style={styles.optionRow}>
+        <Button
+          mode="text"
+          textColor={playMode === 'loop-one' ? '#58a6ff' : '#e6edf3'}
+          onPress={() =>
+            setPlayMode(playMode === 'loop-one' ? 'sequence' : 'loop-one')
+          }
+        >
+          {playMode === 'loop-one' ? '🔂 单曲循环' : '🔁 顺序播放'}
+        </Button>
         <Menu
           visible={speedVisible}
           onDismiss={() => setSpeedVisible(false)}

@@ -306,11 +306,13 @@ export async function getVideoAudioStream(
 export async function getUserVideos(
   mid: number,
   upName: string,
+  page = 1,
+  pageSize = 30,
 ): Promise<BiliSearchResult[]> {
   await ensureBuvid3();
   // 首选 space wbi 投稿接口
   try {
-    const signed = await signWbiParams({ mid, ps: 30, pn: 1 });
+    const signed = await signWbiParams({ mid, ps: pageSize, pn: page });
     const res = await axios.get(
       'https://api.bilibili.com/x/space/wbi/arc/search',
       {
@@ -340,7 +342,7 @@ export async function getUserVideos(
 
   // 兜底：搜索 UP主名称，仅返回作者完全匹配的结果；没有匹配则返回空，
   // 绝不返回无关视频，避免“我的关注”里出现别的 UP 主内容。
-  const results = await searchVideos(upName);
+  const results = await searchVideos(upName, page);
   const exact = results.filter((r) => r.author === upName);
   return exact;
 }

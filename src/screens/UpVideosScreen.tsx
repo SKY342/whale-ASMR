@@ -10,9 +10,8 @@ import type { BiliSearchResult } from '../utils/bilibili-api';
 import { playerQueueStore, toQueueItem } from '../store/playerQueueStore';
 import type { RootStackParamList } from '../navigation/types';
 
-/**
- * UP主作品列表页：关注项点击后进入，点击作品直接进播放器。
- */
+const PAGE_SIZE = 30;
+
 export default function UpVideosScreen() {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'UpVideos'>>();
@@ -20,26 +19,52 @@ export default function UpVideosScreen() {
 
   const [items, setItems] = useState<BiliSearchResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const loadFirst = async () => {
+    setLoading(true);
+    setError(null);
+    setItems([]);
+    setPage(1);
+    setHasMore(true);
+    try {
+      const list = await getUserVideos(mid, upName, 1, PAGE_SIZE);
+      setItems(list);
+      setHasMore(list.length >= PAGE_SIZE);
+    } catch (e) {
+      setError(String((e as Error)?.message ?? e));
+      setHasMore(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const list = await getUserVideos(mid, upName);
-        if (!cancelled) setItems(list);
-      } catch (e) {
-        if (!cancelled) setError(String((e as Error)?.message ?? e));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    void loadFirst();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mid, upName]);
+
+  const loadMore = async () => {
+    if (loadingMore || loading || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const more = await getUserVideos(mid, upName, nextPage, PAGE_SIZE);
+      setItems((prev) => {
+        const seen = new Set(prev.map((i) => i.id));
+        return [...prev, ...more.filter((i) => !seen.has(i.id))];
+      });
+      setPage(nextPage);
+      setHasMore(more.length >= PAGE_SIZE);
+    } catch {
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -62,6 +87,15 @@ export default function UpVideosScreen() {
           data={items}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            loadingMore ? (
+              <Text style={styles.hint}>加载中...</Text>
+            ) : items.length > 0 && !hasMore ? (
+              <Text style={styles.hint}>没有更多了</Text>
+            ) : null
+          }
           renderItem={({ item }) => (
             <Pressable
               style={styles.card}
@@ -101,10 +135,7 @@ export default function UpVideosScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
+  container: { flex: 1, backgroundColor: 'transparent' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -112,55 +143,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 8,
   },
-  backButton: {
-    minWidth: 60,
-  },
-  backText: {
-    color: '#58a6ff',
-    fontSize: 16,
-  },
-  headerTitle: {
-    color: '#e6edf3',
-    fontSize: 16,
-    fontWeight: '600',
-    flex: 1,
-    textAlign: 'center',
-  },
-  hint: {
-    color: '#8b949e',
-    textAlign: 'center',
-    marginTop: 30,
-  },
-  error: {
-    color: '#ff7b72',
-    textAlign: 'center',
-    marginTop: 30,
-    paddingHorizontal: 20,
-  },
-  list: {
-    paddingHorizontal: 16,
-    paddingBottom: 100,
-  },
+  backButton: { minWidth: 60 },
+  backText: { color: '#58a6ff', fontSize: 16 },
+  headerTitle: { color: '#ffffff', fontSize: 16, fontWeight: '600', flex: 1, textAlign: 'center' },
+  hint: { color: '#8b949e', textAlign: 'center', marginTop: 30 },
+  error: { color: '#ff7b72', textAlign: 'center', marginTop: 30, paddingHorizontal: 20 },
+  list: { paddingHorizontal: 16, paddingBottom: 100 },
   card: {
     flexDirection: 'row',
-    backgroundColor: '#161b22',
-    borderRadius: 10,
+    backgroundColor: '#161d26cc',
+    borderRadius: 12,
     padding: 10,
     marginBottom: 10,
     gap: 10,
   },
-  cardInfo: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: 4,
-  },
-  cardTitle: {
-    color: '#e6edf3',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  cardMeta: {
-    color: '#8b949e',
-    fontSize: 12,
-  },
+  cardInfo: { flex: 1, justifyContent: 'center', gap: 4 },
+  cardTitle: { color: '#ffffff', fontSize: 15, fontWeight: '600' },
+  cardMeta: { color: '#9aa4b2', fontSize: 12 },
 });
