@@ -69,6 +69,7 @@ export default function AudioPlayer({ subtitles }: Props) {
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [isFollowed, setIsFollowed] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [isUserSliding, setIsUserSliding] = useState(false);
 
   const isLive = current?.type === 'live';
   const duration = current?.duration ?? 0;
@@ -229,7 +230,10 @@ export default function AudioPlayer({ subtitles }: Props) {
 
   return (
     <>
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+    contentContainerStyle={styles.container}
+    scrollEnabled={!isUserSliding}
+  >
       <View style={styles.coverWrapper}>
         <CoverImage uri={current.artwork} size={220} style={styles.cover} />
       </View>
@@ -262,6 +266,7 @@ export default function AudioPlayer({ subtitles }: Props) {
             progressSeconds={progressSeconds}
             duration={duration}
             onSeek={(seconds) => void seekTo(seconds)}
+            onSlidingStatusChange={setIsUserSliding}
           />
           <View style={styles.progressLabels}>
             <Text style={[styles.progressText, { color: colors.text }]}>

@@ -168,10 +168,12 @@ export function attachPlayerListeners(): void {
   TrackPlayer.addEventListener(Event.PlaybackState, (data) => {
     const playing = data.state === State.Playing || data.state === State.Buffering;
     playerStore.getState().setPlaying(playing);
-    // 播放结束后触发自动连播/单曲循环（由 PlayerQueueService 注册）
-    if (data.state === State.Ended && endedHandler) {
-      endedHandler();
-    }
+  });
+
+  // 自然播完（队列结束）才触发自动连播/单曲循环；
+  // 手动切歌/seek 不会触发，避免误切/双重切歌。
+  TrackPlayer.addEventListener(Event.PlaybackQueueEnded, () => {
+    if (endedHandler) endedHandler();
   });
 }
 

@@ -6,6 +6,8 @@ interface Props {
   progressSeconds: number;
   duration: number;
   onSeek: (seconds: number) => void;
+  /** 拖动状态上抛，用于外层禁用页面滚动。 */
+  onSlidingStatusChange?: (isSliding: boolean) => void;
 }
 
 function formatTime(seconds: number): string {
@@ -20,9 +22,14 @@ function formatTime(seconds: number): string {
 
 /**
  * 可拖动进度条（PanResponder，无第三方依赖）。
- * 拖动时实时预览时间，松手后跳转。
+ * 拖动时实时预览时间；拖动期间上抛 isSliding，外层禁用滚动。
  */
-export default function SeekBar({ progressSeconds, duration, onSeek }: Props) {
+export default function SeekBar({
+  progressSeconds,
+  duration,
+  onSeek,
+  onSlidingStatusChange,
+}: Props) {
   const { colors } = useTheme();
   const [width, setWidth] = useState(1);
   const [dragging, setDragging] = useState(false);
@@ -32,12 +39,17 @@ export default function SeekBar({ progressSeconds, duration, onSeek }: Props) {
   const ratio = duration > 0 ? Math.min(progressSeconds / duration, 1) : 0;
   const displayRatio = dragging ? previewRatio : ratio;
 
+  const setSliding = (value: boolean) => {
+    setDragging(value);
+    onSlidingStatusChange?.(value);
+  };
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
-        setDragging(true);
+        setSliding(true);
         const w = widthRef.current || 1;
         const r = Math.max(0, Math.min(evt.nativeEvent.locationX / w, 1));
         setPreviewRatio(r);
@@ -50,11 +62,11 @@ export default function SeekBar({ progressSeconds, duration, onSeek }: Props) {
       onPanResponderRelease: (evt) => {
         const w = widthRef.current || 1;
         const r = Math.max(0, Math.min(evt.nativeEvent.locationX / w, 1));
-        setDragging(false);
+        setSliding(false);
         onSeek(r * duration);
       },
       onPanResponderTerminate: () => {
-        setDragging(false);
+        setSliding(false);
       },
     }),
   ).current;
@@ -101,7 +113,7 @@ export default function SeekBar({ progressSeconds, duration, onSeek }: Props) {
 
 const styles = StyleSheet.create({
   track: {
-    height: 24,
+    height: 40,
     justifyContent: 'center',
     backgroundColor: 'transparent',
   },
@@ -111,11 +123,11 @@ const styles = StyleSheet.create({
   },
   thumb: {
     position: 'absolute',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    marginLeft: -7,
-    top: 5,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    marginLeft: -9,
+    top: 11,
   },
   tooltip: {
     position: 'absolute',
