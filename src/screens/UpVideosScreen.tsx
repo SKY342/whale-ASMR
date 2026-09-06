@@ -8,6 +8,7 @@ import CoverImage from '../components/CoverImage';
 import { getUserVideos } from '../utils/bilibili-api';
 import type { BiliSearchResult } from '../utils/bilibili-api';
 import { playerQueueStore, toQueueItem } from '../store/playerQueueStore';
+import { buildUpHomeUrl, openExternal } from '../utils/bili-router';
 import type { RootStackParamList } from '../navigation/types';
 
 const PAGE_SIZE = 30;
@@ -81,7 +82,18 @@ export default function UpVideosScreen() {
       {loading ? (
         <Text style={styles.hint}>加载中...</Text>
       ) : error ? (
-        <Text style={styles.error}>加载失败：{error}</Text>
+        <View style={styles.emptyWrap}>
+          <Text style={styles.error}>加载失败：{error}</Text>
+          <Pressable style={styles.retryButton} onPress={() => void loadFirst()}>
+            <Text style={styles.retryText}>点击重试</Text>
+          </Pressable>
+          <Pressable
+            style={styles.retryButton}
+            onPress={() => void openExternal(buildUpHomeUrl(mid))}
+          >
+            <Text style={styles.retryText}>打开UP主主页</Text>
+          </Pressable>
+        </View>
       ) : (
         <FlatList
           data={items}
@@ -127,7 +139,14 @@ export default function UpVideosScreen() {
               </View>
             </Pressable>
           )}
-          ListEmptyComponent={<Text style={styles.hint}>未找到该UP主的作品</Text>}
+          ListEmptyComponent={
+            <View style={styles.emptyWrap}>
+              <Text style={styles.hint}>未找到该UP主的作品</Text>
+              <Pressable style={styles.retryButton} onPress={() => void loadFirst()}>
+                <Text style={styles.retryText}>点击重试</Text>
+              </Pressable>
+            </View>
+          }
         />
       )}
     </SafeAreaView>
@@ -147,7 +166,16 @@ const styles = StyleSheet.create({
   backText: { color: '#58a6ff', fontSize: 16 },
   headerTitle: { color: '#ffffff', fontSize: 16, fontWeight: '600', flex: 1, textAlign: 'center' },
   hint: { color: '#8b949e', textAlign: 'center', marginTop: 30 },
-  error: { color: '#ff7b72', textAlign: 'center', marginTop: 30, paddingHorizontal: 20 },
+  error: { color: '#ff7b72', textAlign: 'center', marginTop: 10, paddingHorizontal: 20 },
+  emptyWrap: { alignItems: 'center', paddingHorizontal: 20, paddingTop: 10 },
+  retryButton: {
+    marginTop: 12,
+    backgroundColor: '#1f6feb',
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+  },
+  retryText: { color: '#ffffff', fontWeight: '600' },
   list: { paddingHorizontal: 16, paddingBottom: 100 },
   card: {
     flexDirection: 'row',

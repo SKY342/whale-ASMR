@@ -35,6 +35,7 @@ export default function SearchResultsScreen() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searched, setSearched] = useState(false);
   const blockedKeywords = settingsStore((s) => s.blockedKeywords);
 
   const fetchPage = async (target: string, pageNum: number): Promise<SearchResult[]> => {
@@ -72,13 +73,25 @@ export default function SearchResultsScreen() {
     setLoading(true);
     setLoadingMore(false);
     setError(null);
+    setSearched(true);
     setResults([]);
     setPage(1);
     setHasMore(true);
     try {
-      const first = await fetchPage(target, 1);
-      setResults(first);
-      setHasMore(first.length >= PAGE_SIZE);
+      // 并发预取前3页，一次展示更多结果
+      const pages = await Promise.all([
+        fetchPage(target, 1),
+        fetchPage(target, 2),
+        fetchPage(target, 3),
+      ]);
+      let merged: SearchResult[] = [];
+      for (const p of pages) {
+        merged = appendUnique(merged, p);
+        if (merged.length >= PAGE_SIZE * 3) break;
+      }
+      setResults(merged);
+      setPage(Math.ceil(merged.length / PAGE_SIZE) || 1);
+      setHasMore(pages[2].length >= PAGE_SIZE);
       void addSearchHistory(target).catch(() => {});
     } catch (e) {
       setError(String((e as Error)?.message ?? e));
@@ -162,6 +175,10 @@ export default function SearchResultsScreen() {
               <Text style={styles.hint}>加载中...</Text>
             ) : results.length > 0 && !hasMore ? (
               <Text style={styles.hint}>没有更多了</Text>
+            ) : results.length > 0 && results.length < 5 ? (
+              <Pressable style={styles.retryButton} onPress={() => void doSearch()}>
+                <Text style={styles.retryText}>结果较少，点击重试</Text>
+              </Pressable>
             ) : null
           }
           renderItem={({ item }) => (
@@ -179,7 +196,16 @@ export default function SearchResultsScreen() {
               </View>
             </Pressable>
           )}
-          ListEmptyComponent={<Text style={styles.hint}>输入关键词开始搜索</Text>}
+          ListEmptyComponent={
+            <View style={styles.emptyWrap}>
+              <Text style={styles.hint}>{searched ? '未找到相关结果' : '输入关键词开始搜索'}</Text>
+              {searched && (
+                <Pressable style={styles.retryButton} onPress={() => void doSearch()}>
+                  <Text style={styles.retryText}>点击重试</Text>
+                </Pressable>
+              )}
+            </View>
+          }
         />
       )}
     </SafeAreaView>
@@ -221,6 +247,21 @@ const styles = StyleSheet.create({
     color: '#8b949e',
     marginTop: 20,
     textAlign: 'center',
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingTop: 10,
+  },
+  retryButton: {
+    marginTop: 10,
+    backgroundColor: '#1f6feb',
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+  },
+  retryText: {
+    color: '#ffffff',
+    fontWeight: '600',
   },
   error: {
     color: '#ff7b72',

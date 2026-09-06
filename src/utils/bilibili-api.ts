@@ -21,13 +21,14 @@ const COMMON_HEADERS = {
 /** 预留：用户登录后注入的 Cookie（优先级2）。 */
 let authCookie = '';
 let buvid3Cookie = '';
+let buvid4Cookie = '';
 
 export function setBilibiliCookie(cookie: string): void {
   authCookie = cookie;
 }
 
 function headers(referer: string): Record<string, string> {
-  const cookie = [buvid3Cookie, authCookie].filter(Boolean).join('; ');
+  const cookie = [buvid3Cookie, buvid4Cookie, authCookie].filter(Boolean).join('; ');
   return {
     ...COMMON_HEADERS,
     Referer: referer,
@@ -84,6 +85,53 @@ export async function ensureBuvid3(): Promise<void> {
   }
 }
 
+/** 获取真实 buvid4（B站风控指纹）。优先内存 → SQLite cache → SPI 接口。 */
+export async function ensureBuvid4(): Promise<void> {
+  if (buvid4Cookie) return;
+
+  try {
+    const row = await db.getFirstAsync<{ value: string }>(
+      'SELECT value FROM cache WHERE key = ?',
+      ['buvid4_cookie'],
+    );
+    if (row?.value) {
+      buvid4Cookie = row.value;
+      return;
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const res = await fetch('https://api.bilibili.com/x/frontend/finger/spi', {
+      headers: COMMON_HEADERS,
+    });
+    const j = await res.json();
+    const b3: string | undefined = j?.data?.b_3;
+    const b4: string | undefined = j?.data?.b_4;
+    if (b3) buvid3Cookie = `buvid3=${b3}`;
+    if (b4) buvid4Cookie = `buvid4=${b4}`;
+    try {
+      if (b3) {
+        await db.runAsync(
+          'INSERT OR REPLACE INTO cache (key, value, ttl_ms, updated_at) VALUES (?, ?, ?, ?)',
+          ['buvid3_cookie', `buvid3=${b3}`, 365 * 24 * 3600 * 1000, Date.now()],
+        );
+      }
+      if (b4) {
+        await db.runAsync(
+          'INSERT OR REPLACE INTO cache (key, value, ttl_ms, updated_at) VALUES (?, ?, ?, ?)',
+          ['buvid4_cookie', `buvid4=${b4}`, 365 * 24 * 3600 * 1000, Date.now()],
+        );
+      }
+    } catch {
+      // ignore
+    }
+  } catch {
+    // ignore
+  }
+}
+
 // ---------- 通用类型 ----------
 
 export interface BiliSearchResult {
@@ -120,14 +168,14 @@ export async function searchVideos(
   keyword: string,
   page = 1,
 ): Promise<BiliSearchResult[]> {
-  await ensureBuvid3();
+  await ensureBuvid4();
   const referer = `https://search.bilibili.com/all?keyword=${encodeURIComponent(keyword)}`;
   const res = await axios.get(
     'https://api.bilibili.com/x/web-interface/search/type',
     {
-      params: { search_type: 'video', keyword, page, page_size: 20 },
+      params: { search_type: 'video', keyword, page, page_size: 20, order: 'totalrank' },
       headers: headers(referer),
-      timeout: 10000,
+      timeout: 15000,
     },
   );
 
@@ -153,14 +201,14 @@ export async function searchLiveRooms(
   keyword: string,
   page = 1,
 ): Promise<BiliSearchResult[]> {
-  await ensureBuvid3();
+  await ensureBuvid4();
   const referer = `https://search.bilibili.com/all?keyword=${encodeURIComponent(keyword)}`;
   const res = await axios.get(
     'https://api.bilibili.com/x/web-interface/search/type',
     {
-      params: { search_type: 'live_room', keyword, page, page_size: 20 },
+      params: { search_type: 'live_room', keyword, page, page_size: 20, order: 'online' },
       headers: headers(referer),
-      timeout: 10000,
+      timeout: 15000,
     },
   );
 
@@ -303,48 +351,76 @@ export async function getVideoAudioStream(
 
 // ---------- UP主投稿 ----------
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function trySpaceVideos(
+  mid: number,
+  upName: string,
+  page: number,
+  pageSize: number,
+): Promise<BiliSearchResult[]> {
+  await ensureBuvid4();
+  const signed = await signWbiParams({ mid, ps: pageSize, pn: page });
+  const res = await axios.get(
+    'https://api.bilibili.com/x/space/wbi/arc/search',
+    {
+      params: signed,
+      headers: headers(`https://space.bilibili.com/${mid}/video`),
+      timeout: 10000,
+    },
+  );
+  const vlist: any[] = res.data?.data?.list?.vlist ?? [];
+  if (res.data?.code === 0 && vlist.length > 0) {
+    return vlist
+      .filter((item) => item?.bvid)
+      .map((item) => ({
+        id: String(item.bvid),
+        type: 'video' as const,
+        title: String(item.title ?? ''),
+        author: String(item.author ?? upName),
+        coverUrl: normalizeUrl(item.pic ?? ''),
+        duration: Number(item.length ?? 0),
+        playCount: String(item.play ?? ''),
+        description: String(item.description ?? ''),
+      }));
+  }
+  return [];
+}
+
 export async function getUserVideos(
   mid: number,
   upName: string,
   page = 1,
   pageSize = 30,
 ): Promise<BiliSearchResult[]> {
-  await ensureBuvid3();
-  // 首选 space wbi 投稿接口
-  try {
-    const signed = await signWbiParams({ mid, ps: pageSize, pn: page });
-    const res = await axios.get(
-      'https://api.bilibili.com/x/space/wbi/arc/search',
-      {
-        params: signed,
-        headers: headers(`https://space.bilibili.com/${mid}/video`),
-        timeout: 10000,
-      },
-    );
-    const vlist: any[] = res.data?.data?.list?.vlist ?? [];
-    if (res.data?.code === 0 && vlist.length > 0) {
-      return vlist
-        .filter((item) => item?.bvid)
-        .map((item) => ({
-          id: String(item.bvid),
-          type: 'video' as const,
-          title: String(item.title ?? ''),
-          author: String(item.author ?? upName),
-          coverUrl: normalizeUrl(item.pic ?? ''),
-          duration: Number(item.length ?? 0),
-          playCount: String(item.play ?? ''),
-          description: String(item.description ?? ''),
-        }));
+  // 主接口：space 投稿，失败后重试 2 次，取结果最多的一次
+  let best: BiliSearchResult[] = [];
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const list = await trySpaceVideos(mid, upName, page, pageSize);
+      if (list.length > best.length) best = list;
+    } catch {
+      // 单次失败不影响重试
     }
-  } catch {
-    // 忽略，走搜索兜底
+    if (best.length > 0 && attempt < 2) break;
+    if (attempt < 2) await delay(1000 * (attempt + 1));
   }
+  if (best.length > 0) return best;
 
-  // 兜底：搜索 UP主名称，仅返回作者完全匹配的结果；没有匹配则返回空，
-  // 绝不返回无关视频，避免“我的关注”里出现别的 UP 主内容。
-  const results = await searchVideos(upName, page);
-  const exact = results.filter((r) => r.author === upName);
-  return exact;
+  // 兜底：用 UP主昵称搜索 1~3 页，作者精确匹配；取匹配最多的一次
+  let exactBest: BiliSearchResult[] = [];
+  for (let p = 1; p <= 3; p += 1) {
+    try {
+      const results = await searchVideos(upName, p);
+      const exact = results.filter((r) => r.author === upName);
+      if (exact.length > exactBest.length) exactBest = exact;
+    } catch {
+      // ignore
+    }
+  }
+  return exactBest;
 }
 
 // ---------- 直播 ----------
