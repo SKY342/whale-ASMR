@@ -12,6 +12,7 @@ import { buildUpHomeUrl, openExternal } from '../utils/bili-router';
 import type { RootStackParamList } from '../navigation/types';
 
 const PAGE_SIZE = 30;
+const PREFETCH_PAGES = 3;
 
 export default function UpVideosScreen() {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -20,10 +21,16 @@ export default function UpVideosScreen() {
 
   const [items, setItems] = useState<BiliSearchResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const appendUnique = (prev: BiliSearchResult[], added: BiliSearchResult[]) => {
+    const seen = new Set(prev.map((i) => i.id));
+    return [...prev, ...added.filter((i) => !seen.has(i.id))];
+  };
 
   const loadFirst = async () => {
     setLoading(true);
@@ -32,9 +39,19 @@ export default function UpVideosScreen() {
     setPage(1);
     setHasMore(true);
     try {
-      const list = await getUserVideos(mid, upName, 1, PAGE_SIZE);
-      setItems(list);
-      setHasMore(list.length >= PAGE_SIZE);
+      // 并发预取前 PREFETCH_PAGES 页，快速展示更多内容
+      const tasks = Array.from({ length: PREFETCH_PAGES }, (_, i) =>
+        getUserVideos(mid, upName, i + 1, PAGE_SIZE),
+      );
+      const pages = await Promise.all(tasks);
+      let merged: BiliSearchResult[] = [];
+      for (const p of pages) {
+        merged = appendUnique(merged, p);
+        if (merged.length >= PAGE_SIZE * PREFETCH_PAGES) break;
+      }
+      setItems(merged);
+      setPage(Math.ceil(merged.length / PAGE_SIZE) || 1);
+      setHasMore(pages[PREFETCH_PAGES - 1].length >= PAGE_SIZE);
     } catch (e) {
       setError(String((e as Error)?.message ?? e));
       setHasMore(false);
@@ -54,16 +71,37 @@ export default function UpVideosScreen() {
     try {
       const nextPage = page + 1;
       const more = await getUserVideos(mid, upName, nextPage, PAGE_SIZE);
-      setItems((prev) => {
-        const seen = new Set(prev.map((i) => i.id));
-        return [...prev, ...more.filter((i) => !seen.has(i.id))];
-      });
+      setItems((prev) => appendUnique(prev, more));
       setPage(nextPage);
       setHasMore(more.length >= PAGE_SIZE);
     } catch {
       setHasMore(false);
     } finally {
       setLoadingMore(false);
+    }
+  };
+
+  const refresh = async () => {
+    setRefreshing(true);
+    setError(null);
+    setHasMore(true);
+    try {
+      const tasks = Array.from({ length: PREFETCH_PAGES }, (_, i) =>
+        getUserVideos(mid, upName, i + 1, PAGE_SIZE),
+      );
+      const pages = await Promise.all(tasks);
+      let merged: BiliSearchResult[] = [];
+      for (const p of pages) {
+        merged = appendUnique(merged, p);
+        if (merged.length >= PAGE_SIZE * PREFETCH_PAGES) break;
+      }
+      setItems(merged);
+      setPage(Math.ceil(merged.length / PAGE_SIZE) || 1);
+      setHasMore(pages[PREFETCH_PAGES - 1].length >= PAGE_SIZE);
+    } catch (e) {
+      setError(String((e as Error)?.message ?? e));
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -99,6 +137,8 @@ export default function UpVideosScreen() {
           data={items}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          refreshing={refreshing}
+          onRefresh={() => void refresh()}
           onEndReached={loadMore}
           onEndReachedThreshold={0.4}
           ListFooterComponent={

@@ -351,10 +351,6 @@ export async function getVideoAudioStream(
 
 // ---------- UP主投稿 ----------
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 async function trySpaceVideos(
   mid: number,
   upName: string,
@@ -395,32 +391,17 @@ export async function getUserVideos(
   page = 1,
   pageSize = 30,
 ): Promise<BiliSearchResult[]> {
-  // 主接口：space 投稿，失败后重试 2 次，取结果最多的一次
-  let best: BiliSearchResult[] = [];
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const list = await trySpaceVideos(mid, upName, page, pageSize);
-      if (list.length > best.length) best = list;
-    } catch {
-      // 单次失败不影响重试
-    }
-    if (best.length > 0 && attempt < 2) break;
-    if (attempt < 2) await delay(1000 * (attempt + 1));
+  // 快速版：只尝试一次 space 投稿接口；失败立即走单页搜索兜底，不重试、不延迟
+  try {
+    const list = await trySpaceVideos(mid, upName, page, pageSize);
+    if (list.length > 0) return list;
+  } catch {
+    // 忽略，走搜索兜底
   }
-  if (best.length > 0) return best;
 
-  // 兜底：用 UP主昵称搜索 1~3 页，作者精确匹配；取匹配最多的一次
-  let exactBest: BiliSearchResult[] = [];
-  for (let p = 1; p <= 3; p += 1) {
-    try {
-      const results = await searchVideos(upName, p);
-      const exact = results.filter((r) => r.author === upName);
-      if (exact.length > exactBest.length) exactBest = exact;
-    } catch {
-      // ignore
-    }
-  }
-  return exactBest;
+  const results = await searchVideos(upName, page);
+  const exact = results.filter((r) => r.author === upName);
+  return exact;
 }
 
 // ---------- 直播 ----------

@@ -39,6 +39,8 @@ import { buildUpHomeUrl } from '../utils/bili-router';
 import CoverImage from './CoverImage';
 import ControlButton from './ControlButton';
 import SleepTimer from './SleepTimer';
+import SeekBar from './SeekBar';
+import { useTheme } from '../themes/ThemeContext';
 
 const SPEED_OPTIONS = [0.75, 1.0, 1.25, 1.5, 2.0];
 
@@ -52,6 +54,7 @@ interface Props {
  * - 直播模式：隐藏进度条，不可快进/后退，仅暂停/播放
  */
 export default function AudioPlayer({ subtitles }: Props) {
+  const { colors } = useTheme();
   const current = playerStore((s) => s.current);
   const isPlaying = playerStore((s) => s.isPlaying);
   const progressSeconds = playerStore((s) => s.progressSeconds);
@@ -61,7 +64,6 @@ export default function AudioPlayer({ subtitles }: Props) {
   const [speedVisible, setSpeedVisible] = useState(false);
   const [rate, setRateState] = useState(1.0);
   const [subtitleText, setSubtitleText] = useState<string | null>(null);
-  const [progressWidth, setProgressWidth] = useState(1);
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [newPlaylistName, setNewPlaylistName] = useState('');
@@ -102,19 +104,10 @@ export default function AudioPlayer({ subtitles }: Props) {
     );
   }
 
-  const progressRatio =
-    isLive || duration <= 0 ? 0 : Math.min(progressSeconds / duration, 1);
-
   const changeRate = (nextRate: number) => {
     setSpeedVisible(false);
     setRateState(nextRate);
     void setRate(nextRate);
-  };
-
-  const handleSeek = (locationX: number) => {
-    if (isLive || progressWidth <= 0 || duration <= 0) return;
-    const ratio = Math.max(0, Math.min(locationX / progressWidth, 1));
-    void seekTo(ratio * duration);
   };
 
   const handleDownload = () => {
@@ -245,7 +238,7 @@ export default function AudioPlayer({ subtitles }: Props) {
         {current.title}
       </Text>
       <View style={styles.authorRow}>
-        <Text style={styles.author}>
+        <Text style={[styles.author, { color: colors.text }]}>
           {isLive ? '🔴 直播中 · ' : ''}
           {current.author}
           {current.quality ? ` · 音质 ${current.quality}` : ''}
@@ -265,21 +258,18 @@ export default function AudioPlayer({ subtitles }: Props) {
 
       {!isLive ? (
         <View style={styles.progressSection}>
-          <Pressable
-            style={styles.progressTrack}
-            onLayout={(event) => setProgressWidth(event.nativeEvent.layout.width)}
-            onPress={(event) => handleSeek(event.nativeEvent.locationX)}
-          >
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${progressRatio * 100}%` as `${number}%` },
-              ]}
-            />
-          </Pressable>
+          <SeekBar
+            progressSeconds={progressSeconds}
+            duration={duration}
+            onSeek={(seconds) => void seekTo(seconds)}
+          />
           <View style={styles.progressLabels}>
-            <Text style={styles.progressText}>{formatTime(progressSeconds)}</Text>
-            <Text style={styles.progressText}>{formatTime(duration)}</Text>
+            <Text style={[styles.progressText, { color: colors.text }]}>
+              {formatTime(progressSeconds)}
+            </Text>
+            <Text style={[styles.progressText, { color: colors.text }]}>
+              {formatTime(duration)}
+            </Text>
           </View>
         </View>
       ) : (

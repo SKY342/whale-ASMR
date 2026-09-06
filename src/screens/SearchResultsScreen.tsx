@@ -22,6 +22,7 @@ import type { RootStackParamList } from '../navigation/types';
 import type { SearchResult } from '../services/sources';
 
 const PAGE_SIZE = 20;
+const PREFETCH_PAGES = 5;
 
 export default function SearchResultsScreen() {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -31,6 +32,7 @@ export default function SearchResultsScreen() {
   const [keyword, setKeyword] = useState(initialKeyword ?? '');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -66,11 +68,17 @@ export default function SearchResultsScreen() {
     return [...prev, ...added.filter((i) => !seen.has(`${i.type}:${i.id}`))];
   };
 
-  const doSearch = async (kw?: string) => {
+  const doSearch = async (kw?: string, isRefresh = false) => {
     const target = (kw ?? keyword).trim();
     if (!target) return;
     setKeyword(target);
-    setLoading(true);
+    if (isRefresh) {
+      setRefreshing(true);
+      setLoading(false);
+    } else {
+      setLoading(true);
+      setRefreshing(false);
+    }
     setLoadingMore(false);
     setError(null);
     setSearched(true);
@@ -78,20 +86,19 @@ export default function SearchResultsScreen() {
     setPage(1);
     setHasMore(true);
     try {
-      // 并发预取前3页，一次展示更多结果
-      const pages = await Promise.all([
-        fetchPage(target, 1),
-        fetchPage(target, 2),
-        fetchPage(target, 3),
-      ]);
+      // 并发预取前 PREFETCH_PAGES 页，一次展示更多结果
+      const tasks = Array.from({ length: PREFETCH_PAGES }, (_, i) =>
+        fetchPage(target, i + 1),
+      );
+      const pages = await Promise.all(tasks);
       let merged: SearchResult[] = [];
       for (const p of pages) {
         merged = appendUnique(merged, p);
-        if (merged.length >= PAGE_SIZE * 3) break;
+        if (merged.length >= PAGE_SIZE * PREFETCH_PAGES) break;
       }
       setResults(merged);
       setPage(Math.ceil(merged.length / PAGE_SIZE) || 1);
-      setHasMore(pages[2].length >= PAGE_SIZE);
+      setHasMore(pages[PREFETCH_PAGES - 1].length >= PAGE_SIZE);
       void addSearchHistory(target).catch(() => {});
     } catch (e) {
       setError(String((e as Error)?.message ?? e));
@@ -99,6 +106,7 @@ export default function SearchResultsScreen() {
       setHasMore(false);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -168,6 +176,8 @@ export default function SearchResultsScreen() {
           keyExtractor={(item) => `${item.type}_${item.id}`}
           contentContainerStyle={styles.list}
           keyboardShouldPersistTaps="handled"
+          refreshing={refreshing}
+          onRefresh={() => void doSearch(keyword, true)}
           onEndReached={loadMore}
           onEndReachedThreshold={0.4}
           ListFooterComponent={
