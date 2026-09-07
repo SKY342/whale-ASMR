@@ -14,6 +14,7 @@ let timerState: TimerState = 'idle';
 let timerHandle: ReturnType<typeof setTimeout> | null = null;
 let sleepEndAt: number | null = null;
 let generation = 0;
+let sleepTimerStopping = false;
 
 export interface SleepTimerOptions {
   minutes: number;
@@ -49,10 +50,14 @@ export function startSleepTimer(options: SleepTimerOptions): void {
 
       if (myGeneration !== generation) return;
 
+      // 标记“定时器主动停止”，防止自动连播被 stop 事件误触发
+      sleepTimerStopping = true;
       // 确认当前仍应关闭，才真正停止
       await TrackPlayer.stop();
       await TrackPlayer.setVolume(1);
+      sleepTimerStopping = false;
     } catch {
+      sleepTimerStopping = false;
       try {
         await TrackPlayer.setVolume(1);
       } catch {
@@ -72,6 +77,7 @@ export function startSleepTimer(options: SleepTimerOptions): void {
 export function cancelSleepTimer(): void {
   generation += 1;
   timerState = 'idle';
+  sleepTimerStopping = false;
   if (timerHandle) {
     clearTimeout(timerHandle);
     timerHandle = null;
@@ -81,6 +87,10 @@ export function cancelSleepTimer(): void {
 
 export function isSleepTimerActive(): boolean {
   return timerState === 'scheduled' || timerState === 'fading';
+}
+
+export function isSleepTimerStopping(): boolean {
+  return sleepTimerStopping;
 }
 
 export function getSleepTimerRemainingSeconds(): number {

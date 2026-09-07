@@ -6,6 +6,7 @@ import type { QueueItem } from '../../store/playerQueueStore';
 import { playerStore } from '../../store/playerStore';
 import { getLiveRoomUpInfo, getVideoInfo } from '../../utils/bilibili-api';
 import { addHistory } from '../historyService';
+import { isSleepTimerStopping } from '../../utils/timer';
 
 /**
  * 播放队列服务：负责按队列上下文解析音频并播放。
@@ -52,6 +53,9 @@ export async function playPreviousInQueue(): Promise<boolean> {
 
 /** 播放结束处理：单曲循环 seek0 重播；顺序模式切到队列下一个（末尾循环）。 */
 export async function handlePlaybackEnded(): Promise<void> {
+  // 定时器主动停止时不触发自动连播，保证“定时关闭”独立生效
+  if (isSleepTimerStopping()) return;
+
   const mode = playerStore.getState().playMode;
   if (mode === 'loop-one') {
     try {

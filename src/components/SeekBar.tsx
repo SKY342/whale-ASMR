@@ -22,7 +22,8 @@ function formatTime(seconds: number): string {
 
 /**
  * 可拖动进度条（PanResponder，无第三方依赖）。
- * 拖动时实时预览时间；拖动期间上抛 isSliding，外层禁用滚动。
+ * 使用绝对横坐标 pageX + measureInWindow 计算比例，
+ * 保证“本体上”和“上下热区”都严格线性，不抽搐、不跳跃。
  */
 export default function SeekBar({
   progressSeconds,
@@ -35,6 +36,10 @@ export default function SeekBar({
   const [dragging, setDragging] = useState(false);
   const [previewRatio, setPreviewRatio] = useState(0);
   const widthRef = useRef(1);
+  const leftRef = useRef(0);
+  const trackRef = useRef<View>(null);
+  const durationRef = useRef(duration);
+  durationRef.current = duration;
 
   const ratio = duration > 0 ? Math.min(progressSeconds / duration, 1) : 0;
   const displayRatio = dragging ? previewRatio : ratio;
@@ -44,26 +49,33 @@ export default function SeekBar({
     onSlidingStatusChange?.(value);
   };
 
+  const measureLeft = () => {
+    trackRef.current?.measureInWindow((x) => {
+      leftRef.current = x;
+    });
+  };
+
+  const ratioFromPageX = (pageX: number) => {
+    const w = widthRef.current || 1;
+    return Math.max(0, Math.min((pageX - leftRef.current) / w, 1));
+  };
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
+        measureLeft();
         setSliding(true);
-        const w = widthRef.current || 1;
-        const r = Math.max(0, Math.min(evt.nativeEvent.locationX / w, 1));
-        setPreviewRatio(r);
+        setPreviewRatio(ratioFromPageX(evt.nativeEvent.pageX));
       },
       onPanResponderMove: (evt) => {
-        const w = widthRef.current || 1;
-        const r = Math.max(0, Math.min(evt.nativeEvent.locationX / w, 1));
-        setPreviewRatio(r);
+        setPreviewRatio(ratioFromPageX(evt.nativeEvent.pageX));
       },
       onPanResponderRelease: (evt) => {
-        const w = widthRef.current || 1;
-        const r = Math.max(0, Math.min(evt.nativeEvent.locationX / w, 1));
+        const r = ratioFromPageX(evt.nativeEvent.pageX);
         setSliding(false);
-        onSeek(r * duration);
+        onSeek(r * (durationRef.current || 0));
       },
       onPanResponderTerminate: () => {
         setSliding(false);
@@ -76,11 +88,13 @@ export default function SeekBar({
   return (
     <View>
       <View
+        ref={trackRef}
         style={styles.track}
         onLayout={(e) => {
           const w = e.nativeEvent.layout.width;
           widthRef.current = w;
           setWidth(w);
+          measureLeft();
         }}
         {...panResponder.panHandlers}
       >
