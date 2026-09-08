@@ -83,8 +83,8 @@ npm run typecheck  # TypeScript 类型检查
 - 5.优化了“我的”界面的条目
 - 6.降低了软件大小，但不再支持Android旧版本（32位）
 - 7.优化了首页推荐内容
-- 度盘链接：https://pan.baidu.com/s/1m2-QX0ui2s99bKc3Uxnd8Q 
-提取码:x126
+- 度盘链接：https://pan.baidu.com/s/1krhEllTFPwfBjMBk23YJwQ 
+提取码:wkd7
 欢迎使用，祝您好梦
 ## 免责声明
 
